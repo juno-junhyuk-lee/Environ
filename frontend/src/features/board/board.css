@@ -1,0 +1,16 @@
+.hex-board {
+  display: block;
+  width: 100%;
+  max-width: 36rem;
+  height: auto;
+  margin: 2rem auto;
+}
+
+.hex-tile {
+  fill: white;
+  stroke: black;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  /* Keep borders the same thickness when the board scales. */
+  vector-effect: non-scaling-stroke;
+}
