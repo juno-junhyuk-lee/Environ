@@ -1,0 +1,28 @@
+# Normalize line endings so Windows, macOS, and Linux all behave the same.
+# Every text file is stored and checked out with LF, overriding each
+# developer's core.autocrlf setting. This keeps diffs clean and matches what
+# Prettier and Ruff expect.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF to run correctly.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary files: never modify or diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.pdf   binary
+*.zip   binary
+
+# Lockfiles are generated: collapse them in GitHub diffs.
+package-lock.json linguist-generated=true -diff
+uv.lock           linguist-generated=true -diff

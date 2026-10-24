@@ -1,0 +1,61 @@
+[project]
+name = "environ-backend"
+version = "0.1.0"
+description = "Backend API for Environ, a climate-conscious city-building simulation."
+readme = "README.md"
+# Pinned to a single minor version so every developer and CI run the same Python.
+# Keep in sync with .python-version.
+requires-python = ">=3.13,<3.14"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "ruff>=0.17.2",
+]
+
+[tool.uv]
+# Everyone should use a recent uv so lockfile formats stay compatible.
+required-version = ">=0.10"
+package = false
+
+# ---------------------------------------------------------------------------
+# Ruff: linter + formatter
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 88
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+# Strict: enable every rule, then opt out of specific ones with a reason.
+select = ["ALL"]
+ignore = [
+    "COM812", # Conflicts with the formatter (trailing commas).
+    "D203",   # Conflicts with D211 (blank line before class docstring).
+    "D213",   # Conflicts with D212 (multi-line docstring summary position).
+    "CPY001", # No per-file copyright headers; licensing is handled at repo level.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",    # assert is how pytest works.
+    "D",       # Test names describe themselves; docstrings not required.
+    "PLR2004", # Magic values are fine in test expectations.
+    "INP001",  # tests/ is not a package.
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+# ---------------------------------------------------------------------------
+# mypy: static type checking
+# ---------------------------------------------------------------------------
+[tool.mypy]
+strict = true
+files = ["app"]
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
