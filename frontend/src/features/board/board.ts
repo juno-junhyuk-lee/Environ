@@ -1,8 +1,17 @@
+import {
+  FOREST,
+  getDefaultCondition,
+  type ElementName,
+} from "../../world/elements.ts";
+
 export interface Tile {
   id: string;
   // q = axial column; r = axial row.
   q: number;
   r: number;
+  element: ElementName;
+  /** Population, forest health, or water quality depending on element (0–100). */
+  conditionValue: number;
 }
 
 // HEX_SIZE = distance from a tile's center to a corner.
@@ -11,6 +20,9 @@ export const HEX_SIZE = 50;
 export function createBoard(): Tile[] {
   const radius = 2; // Two rings around the center give 19 tiles.
   const tiles: Tile[] = [];
+  // Provisional fill until Ticket 3 builds the default world layout.
+  const defaultElement = FOREST.name;
+  const defaultCondition = getDefaultCondition(FOREST);
 
   for (let r = -radius; r <= radius; r += 1) {
     // Limit each row to the hexagonal outline: 3, 4, 5, 4, 3.
@@ -18,7 +30,13 @@ export function createBoard(): Tile[] {
     const lastQ = Math.min(radius, -r + radius);
 
     for (let q = firstQ; q <= lastQ; q += 1) {
-      tiles.push({ id: `${String(q)},${String(r)}`, q, r });
+      tiles.push({
+        id: `${String(q)},${String(r)}`,
+        q,
+        r,
+        element: defaultElement,
+        conditionValue: defaultCondition,
+      });
     }
   }
 
