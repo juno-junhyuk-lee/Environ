@@ -372,7 +372,7 @@ These commands update `package.json` **and** `package-lock.json`. Commit both fi
 
 ### 4.6 Testing
 
-Testing for the frontend (Vitest + React Testing Library) **will be set up later**. This section will be updated when it is.
+Run `npm test` from `frontend/` with Node.js 24 to test default world creation and reset data using Node's built-in test runner. See [frontend/README.md](frontend/README.md) for manual checks. Component testing with Vitest + React Testing Library will be set up later.
 
 ### 4.7 Frontend command cheat sheet
 
