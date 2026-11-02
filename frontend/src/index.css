@@ -13,3 +13,22 @@ main {
   margin: 0 auto;
   padding: 1.5rem;
 }
+
+.world-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.world-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+}

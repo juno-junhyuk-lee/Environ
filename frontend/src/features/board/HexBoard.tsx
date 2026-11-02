@@ -1,13 +1,13 @@
-import { createBoard, HEX_SIZE } from "./board.ts";
+import { HEX_SIZE } from "./board.ts";
+import type { WorldTile } from "../world/world.ts";
 import { HexTile } from "./HexTile.tsx";
 import "./board.css";
 
-const tiles = createBoard();
 // Board bounds plus padding to keep border strokes inside the viewBox.
 const width = Math.sqrt(3) * HEX_SIZE * 5 + 4;
 const height = HEX_SIZE * 8 + 4;
 
-export function HexBoard() {
+export function HexBoard({ tiles }: { tiles: WorldTile[] }) {
   return (
     <svg
       className="hex-board"

@@ -6,8 +6,25 @@
   margin: 2rem auto;
 }
 
+.hex-tile--forest {
+  fill: #b8d8b0;
+}
+
+.hex-tile--water {
+  fill: #acd9ee;
+}
+
+.hex-tile--settlement {
+  fill: #efcf9e;
+}
+
+.hex-tile-label {
+  font-size: 1.25rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
 .hex-tile {
-  fill: white;
   stroke: black;
   stroke-width: 2;
   stroke-linejoin: round;
