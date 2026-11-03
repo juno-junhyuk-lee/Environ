@@ -14,9 +14,6 @@ export interface Tile {
   conditionValue: number;
 }
 
-// HEX_SIZE = distance from a tile's center to a corner.
-export const HEX_SIZE = 50;
-
 export function createBoard(): Tile[] {
   const radius = 2; // Two rings around the center give 19 tiles.
   const tiles: Tile[] = [];

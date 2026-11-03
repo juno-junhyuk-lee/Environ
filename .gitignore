@@ -1,5 +1,7 @@
 
 .claude/
+plan.md
+tutorial-*.md
 CLAUDE.local.md
 
 # Dependencies

@@ -1,15 +1,53 @@
 :root {
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
   color: black;
-  background: white;
+  /* The 3D canvas is transparent, so this colour is also the board's sky. */
+  background: #e8f3f7;
 }
 
 body {
   margin: 0;
 }
 
-main {
-  max-width: 64rem;
-  margin: 0 auto;
+/* A fixed height (not min-height), so the 3D canvas can measure itself. */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  height: 100dvh;
+}
+
+@media (width < 48rem) {
+  .app {
+    height: auto;
+  }
+}
+
+.app-header {
+  padding: 1.5rem 1.5rem 0;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.app-header p {
+  margin: 0.25rem 0 0;
+}
+
+.app-main {
+  display: flex;
+  min-height: 0;
+}
+
+.app-side {
+  flex: 1;
+  min-width: 0;
   padding: 1.5rem;
+}
+
+@media (width < 48rem) {
+  .app-main {
+    flex-direction: column-reverse;
+  }
 }

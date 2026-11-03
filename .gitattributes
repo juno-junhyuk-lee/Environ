@@ -22,6 +22,7 @@
 *.otf   binary
 *.pdf   binary
 *.zip   binary
+*.glb   binary
 
 # Lockfiles are generated: collapse them in GitHub diffs.
 package-lock.json linguist-generated=true -diff
