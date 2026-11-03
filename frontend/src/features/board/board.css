@@ -1,16 +1,38 @@
-.hex-board {
-  display: block;
-  width: 100%;
-  max-width: 36rem;
-  height: auto;
-  margin: 2rem auto;
+.board-3d {
+  width: 65%;
+  margin-left: auto;
+  /* The canvas sizes itself to its parent, so this height must be definite. */
+  height: 100%;
 }
 
-.hex-tile {
-  fill: white;
-  stroke: black;
-  stroke-width: 2;
-  stroke-linejoin: round;
-  /* Keep borders the same thickness when the board scales. */
-  vector-effect: non-scaling-stroke;
+@media (width < 48rem) {
+  .board-3d {
+    width: 100%;
+    height: 70vh;
+  }
+}
+
+.board-loading {
+  margin: 0;
+  white-space: nowrap;
+  color: #4a5a52;
+}
+
+.dev-controls {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 16rem;
+  padding: 1rem;
+  border: 1px dashed #4a5a52;
+  border-radius: 0.5rem;
+}
+
+.dev-controls-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.dev-controls label {
+  display: grid;
+  gap: 0.25rem;
 }
