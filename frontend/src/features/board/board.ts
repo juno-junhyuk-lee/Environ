@@ -17,7 +17,7 @@ export interface Tile {
 export function createBoard(): Tile[] {
   const radius = 2; // Two rings around the center give 19 tiles.
   const tiles: Tile[] = [];
-  // Provisional fill until Ticket 3 builds the default world layout.
+  // Generic boards start as forest; the world factory applies its layout.
   const defaultElement = FOREST.name;
   const defaultCondition = getDefaultCondition(FOREST);
 

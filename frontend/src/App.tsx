@@ -1,6 +1,7 @@
 import { Board3D } from "./features/board/Board3D.tsx";
 import { BoardProvider } from "./features/board/BoardProvider.tsx";
 import { DevBoardControls } from "./features/board/DevBoardControls.tsx";
+import { WorldControls } from "./features/board/WorldControls.tsx";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         </header>
         <main className="app-main">
           <aside className="app-side">
+            <WorldControls />
             {import.meta.env.DEV && <DevBoardControls />}
           </aside>
           <Board3D />

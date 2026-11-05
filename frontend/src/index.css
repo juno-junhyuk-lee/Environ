@@ -9,6 +9,30 @@ body {
   margin: 0;
 }
 
+.world-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.world-controls button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.world-controls button:disabled {
+  cursor: wait;
+}
+
+.world-feedback {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 /* A fixed height (not min-height), so the 3D canvas can measure itself. */
 .app {
   display: grid;

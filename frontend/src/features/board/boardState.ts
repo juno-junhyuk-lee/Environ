@@ -1,6 +1,10 @@
 import {
   type Board,
   type ElementName,
+  type World,
+  type WorldSave,
+  boardFromSave,
+  createDefaultWorld,
   getTile,
   replaceTile,
   setNewElement,
@@ -10,6 +14,21 @@ export interface BoardAction {
   type: "placeElement";
   tileId: string;
   element: ElementName;
+}
+
+export type WorldAction =
+  BoardAction | { type: "resetWorld" } | { type: "loadWorld"; save: WorldSave };
+
+export function worldReducer(world: World, action: WorldAction): World {
+  if (action.type === "resetWorld") {
+    return createDefaultWorld();
+  }
+  if (action.type === "loadWorld") {
+    return { ...boardFromSave(action.save), year: action.save.year };
+  }
+
+  const board = boardReducer(world, action);
+  return board === world ? world : { ...board, year: world.year };
 }
 
 /** Returns the same board when nothing changes, so React can skip re-rendering. */

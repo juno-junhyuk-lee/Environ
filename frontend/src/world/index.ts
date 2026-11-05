@@ -60,3 +60,4 @@ export {
   type TimeSimulation,
   type TimeSimulationState,
 } from "./time.ts";
+export { createDefaultWorld, type World } from "./world.ts";

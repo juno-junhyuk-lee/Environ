@@ -2,7 +2,12 @@ import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { useEffect } from "react";
 import type { BufferGeometry, Mesh, MeshBasicMaterial } from "three";
 import { describe, expect, it, vi } from "vitest";
-import { type Board, createBoardState } from "../../world/index.ts";
+import {
+  type Board,
+  createBoardState,
+  createDefaultWorld,
+  serializeWorld,
+} from "../../world/index.ts";
 import { axialToWorld } from "./geometry.ts";
 import { type BoardActions, useBoardActions } from "./boardContext.ts";
 import { BoardProvider } from "./BoardProvider.tsx";
@@ -66,6 +71,9 @@ describe("BoardScene", () => {
 
     const corner = renderer.scene.findByProps({ name: "tile-2,-2" });
     expect(corner.instance.position.toArray()).toEqual(axialToWorld(2, -2));
+    expect(modelUrl(renderer, "-1,0")).toBe(ELEMENT_MODELS.forest.url);
+    expect(modelUrl(renderer, "0,0")).toBe(ELEMENT_MODELS.fresh_water_body.url);
+    expect(modelUrl(renderer, "1,0")).toBe(ELEMENT_MODELS.human_settlement.url);
   });
 
   it("gives every tile its own copy of the model", async () => {
@@ -116,15 +124,15 @@ describe("BoardScene", () => {
         <CaptureActions onReady={(a) => (actions = a)} />
       </BoardProvider>,
     );
-    expect(modelUrl(renderer, "1,-1")).toBe(ELEMENT_MODELS.forest.url);
-
-    await ReactThreeTestRenderer.act(async () => {
-      actions?.placeElement("1,-1", "human_settlement");
-      await Promise.resolve();
-    });
     expect(modelUrl(renderer, "1,-1")).toBe(
       ELEMENT_MODELS.human_settlement.url,
     );
+
+    await ReactThreeTestRenderer.act(async () => {
+      actions?.placeElement("1,-1", "forest");
+      await Promise.resolve();
+    });
+    expect(modelUrl(renderer, "1,-1")).toBe(ELEMENT_MODELS.forest.url);
 
     await ReactThreeTestRenderer.act(async () => {
       actions?.placeElement("1,-1", "fresh_water_body");
@@ -133,6 +141,23 @@ describe("BoardScene", () => {
     expect(modelUrl(renderer, "1,-1")).toBe(
       ELEMENT_MODELS.fresh_water_body.url,
     );
+
+    await ReactThreeTestRenderer.act(async () => {
+      actions?.resetWorld();
+      await Promise.resolve();
+    });
+    expect(modelUrl(renderer, "1,-1")).toBe(
+      ELEMENT_MODELS.human_settlement.url,
+    );
+
+    const save = serializeWorld(37, createDefaultWorld());
+    save.tiles = save.tiles.map((tile) => ({ ...tile, element: "forest" }));
+    await ReactThreeTestRenderer.act(async () => {
+      actions?.loadWorld(save);
+      await Promise.resolve();
+    });
+    expect(modelUrl(renderer, "0,0")).toBe(ELEMENT_MODELS.forest.url);
+    expect(modelUrl(renderer, "1,-1")).toBe(ELEMENT_MODELS.forest.url);
   });
 
   it("draws the border at the ground height of the tile's model", async () => {
