@@ -20,6 +20,9 @@ export function BoardProvider({ children, initialBoard }: BoardProviderProps) {
   // `dispatch` is stable, so no dependencies.
   const actions = useMemo<BoardActions>(
     () => ({
+      loadWorld: (save) => {
+        dispatch({ type: "loadWorld", save });
+      },
       resetWorld: () => {
         dispatch({ type: "resetWorld" });
       },

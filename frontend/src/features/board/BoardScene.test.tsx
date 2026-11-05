@@ -2,7 +2,12 @@ import ReactThreeTestRenderer from "@react-three/test-renderer";
 import { useEffect } from "react";
 import type { BufferGeometry, Mesh, MeshBasicMaterial } from "three";
 import { describe, expect, it, vi } from "vitest";
-import { type Board, createBoardState } from "../../world/index.ts";
+import {
+  type Board,
+  createBoardState,
+  createDefaultWorld,
+  serializeWorld,
+} from "../../world/index.ts";
 import { axialToWorld } from "./geometry.ts";
 import { type BoardActions, useBoardActions } from "./boardContext.ts";
 import { BoardProvider } from "./BoardProvider.tsx";
@@ -144,6 +149,15 @@ describe("BoardScene", () => {
     expect(modelUrl(renderer, "1,-1")).toBe(
       ELEMENT_MODELS.human_settlement.url,
     );
+
+    const save = serializeWorld(37, createDefaultWorld());
+    save.tiles = save.tiles.map((tile) => ({ ...tile, element: "forest" }));
+    await ReactThreeTestRenderer.act(async () => {
+      actions?.loadWorld(save);
+      await Promise.resolve();
+    });
+    expect(modelUrl(renderer, "0,0")).toBe(ELEMENT_MODELS.forest.url);
+    expect(modelUrl(renderer, "1,-1")).toBe(ELEMENT_MODELS.forest.url);
   });
 
   it("draws the border at the ground height of the tile's model", async () => {

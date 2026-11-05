@@ -1,8 +1,9 @@
 import { createContext, useContext } from "react";
-import type { World, ElementName } from "../../world/index.ts";
+import type { World, ElementName, WorldSave } from "../../world/index.ts";
 
 export interface BoardActions {
   resetWorld: () => void;
+  loadWorld: (save: WorldSave) => void;
   placeElement: (tileId: string, element: ElementName) => void;
 }
 
