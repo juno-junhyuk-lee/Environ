@@ -1,32 +1,25 @@
-import { HexBoard } from "./features/board/HexBoard.tsx";
-import { useState } from "react";
-import { createDefaultWorld } from "./features/world/world.ts";
+import { Board3D } from "./features/board/Board3D.tsx";
+import { BoardProvider } from "./features/board/BoardProvider.tsx";
+import { DevBoardControls } from "./features/board/DevBoardControls.tsx";
+import { WorldControls } from "./features/board/WorldControls.tsx";
 
 function App() {
-  const [world, setWorld] = useState(createDefaultWorld);
-
   return (
-    <main>
-      <h1>Environ</h1>
-      <p>Build a world. See how your choices shape its future.</p>
-      <div className="world-controls">
-        <p>Year {world.year}</p>
-        <button
-          type="button"
-          onClick={() => {
-            setWorld(createDefaultWorld());
-          }}
-        >
-          Reset world
-        </button>
+    <BoardProvider>
+      <div className="app">
+        <header className="app-header">
+          <h1>Environ</h1>
+          <p>Build a world. See how your choices shape its future.</p>
+        </header>
+        <main className="app-main">
+          <aside className="app-side">
+            <WorldControls />
+            {import.meta.env.DEV && <DevBoardControls />}
+          </aside>
+          <Board3D />
+        </main>
       </div>
-      <HexBoard tiles={world.tiles} />
-      <ul className="world-legend" aria-label="World elements">
-        <li>Forest (F)</li>
-        <li>Fresh water body (W)</li>
-        <li>Human settlement (S)</li>
-      </ul>
-    </main>
+    </BoardProvider>
   );
 }
 

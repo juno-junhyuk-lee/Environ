@@ -4,7 +4,7 @@ React + TypeScript web app for Environ. See the root [CONTRIBUTING.md](../CONTRI
 
 ## Default world
 
-Each session starts at year 0 with 19 tiles: forests, fresh water bodies, and human settlements. Forest health and water quality start at 100; settlement population starts at 50. Reset world restores this layout, year, and conditions.
+Each session starts at year 0 with 19 tiles: seven forests on the left, five fresh water bodies through the center, and seven human settlements on the right. All conditions start at 50, using the shared element defaults. Reset world restores this layout, year, and conditions.
 
 ## Verification
 
@@ -16,6 +16,6 @@ npm run check
 npm run build
 ```
 
-Tests use Node's built-in test runner and cover board positions, initial elements and conditions, and independent world instances for resets.
+Tests use Vitest and React Testing Library and cover board positions, initial elements and conditions, independent world instances, and the reset control.
 
-For a visual check, run `npm run dev`. Confirm that the board has 19 tiles with green F, blue W, and tan S labels, the year is 0, and Reset world preserves the default layout on repeated clicks. Tile editing and simulation are not implemented yet.
+For a visual check, run `npm run dev`. Confirm that the 3D board has 19 tiles with forests, water, and settlements, and the year is 0. Use the development controls to change a tile, then verify that Reset world restores the default layout on repeated clicks. Simulation controls are not connected yet.

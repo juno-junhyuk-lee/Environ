@@ -372,7 +372,7 @@ These commands update `package.json` **and** `package-lock.json`. Commit both fi
 
 ### 4.6 Testing
 
-Run `npm test` from `frontend/` with Node.js 24 to test default world creation and reset data using Node's built-in test runner. See [frontend/README.md](frontend/README.md) for manual checks. Component testing with Vitest + React Testing Library will be set up later.
+Run `npm test` from `frontend/` with Node.js 24. Tests use Vitest and React Testing Library, including default world creation and reset coverage. See [frontend/README.md](frontend/README.md) for manual checks.
 
 ### 4.7 Frontend command cheat sheet
 
