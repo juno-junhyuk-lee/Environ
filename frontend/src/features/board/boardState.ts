@@ -2,6 +2,8 @@ import {
   type Board,
   type ElementName,
   type World,
+  type WorldSave,
+  boardFromSave,
   createDefaultWorld,
   getTile,
   replaceTile,
@@ -14,11 +16,15 @@ export interface BoardAction {
   element: ElementName;
 }
 
-export type WorldAction = BoardAction | { type: "resetWorld" };
+export type WorldAction =
+  BoardAction | { type: "resetWorld" } | { type: "loadWorld"; save: WorldSave };
 
 export function worldReducer(world: World, action: WorldAction): World {
   if (action.type === "resetWorld") {
     return createDefaultWorld();
+  }
+  if (action.type === "loadWorld") {
+    return { ...boardFromSave(action.save), year: action.save.year };
   }
 
   const board = boardReducer(world, action);

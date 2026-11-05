@@ -1,10 +1,12 @@
-import type { Tile } from "../features/board/board.ts";
+import { createBoard, type Tile } from "../features/board/board.ts";
 import { MAX_TILES, type Board } from "./board.ts";
 import { isElementName } from "./elements.ts";
 
 export const WORLD_SAVE_FORMAT = "environ-world" as const;
 export const WORLD_SAVE_VERSION = 1 as const;
 export const LOCAL_STORAGE_KEY = "environ-world-autosave";
+
+const BOARD_POSITIONS = new Set(createBoard().map((tile) => tile.id));
 
 export interface WorldSave {
   format: typeof WORLD_SAVE_FORMAT;
@@ -28,9 +30,11 @@ function isValidTile(value: unknown): value is Tile {
   return (
     typeof id === "string" &&
     typeof q === "number" &&
-    Number.isFinite(q) &&
+    Number.isInteger(q) &&
     typeof r === "number" &&
-    Number.isFinite(r) &&
+    Number.isInteger(r) &&
+    id === `${String(q)},${String(r)}` &&
+    BOARD_POSITIONS.has(id) &&
     typeof element === "string" &&
     isElementName(element) &&
     typeof conditionValue === "number" &&
@@ -55,10 +59,10 @@ export function validateWorldSave(data: unknown): LoadWorldResult {
 
   if (
     typeof data.year !== "number" ||
-    !Number.isFinite(data.year) ||
+    !Number.isSafeInteger(data.year) ||
     data.year < 0
   ) {
-    return { ok: false, error: "Year must be a number >= 0." };
+    return { ok: false, error: "Year must be a nonnegative safe integer." };
   }
 
   if (!Array.isArray(data.tiles)) {
@@ -86,7 +90,8 @@ export function validateWorldSave(data: unknown): LoadWorldResult {
       return { ok: false, error: "Duplicate tile ids are not allowed." };
     }
     ids.add(candidate.id);
-    tiles.push(candidate);
+    const { id, q, r, element, conditionValue } = candidate;
+    tiles.push({ id, q, r, element, conditionValue });
   }
 
   return {
@@ -105,7 +110,7 @@ export function serializeWorld(year: number, board: Board): WorldSave {
     format: WORLD_SAVE_FORMAT,
     version: WORLD_SAVE_VERSION,
     year,
-    tiles: board.tiles,
+    tiles: board.tiles.map((tile) => ({ ...tile })),
   };
 }
 
@@ -113,10 +118,7 @@ export function worldSaveToJson(save: WorldSave): string {
   return `${JSON.stringify(save, null, 2)}\n`;
 }
 
-/**
- * Triggers a browser download of the world as a .json file.
- * No-op outside a browser document context.
- */
+/** Downloads the current world as JSON. */
 export function exportWorldToFile(
   year: number,
   board: Board,
@@ -130,8 +132,15 @@ export function exportWorldToFile(
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  document.body.append(anchor);
+  try {
+    anchor.click();
+  } finally {
+    anchor.remove();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 0);
+  }
 }
 
 /**
@@ -145,21 +154,17 @@ export async function importWorldFromFile(
   try {
     text = await file.text();
   } catch {
-    return { ok: false, error: "The file could not be loaded." };
+    return { ok: false, error: "The file could not be read." };
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(text) as unknown;
   } catch {
-    return { ok: false, error: "The file could not be loaded." };
+    return { ok: false, error: "The file must contain valid JSON." };
   }
 
-  const result = validateWorldSave(parsed);
-  if (!result.ok) {
-    return { ok: false, error: "The file could not be loaded." };
-  }
-  return result;
+  return validateWorldSave(parsed);
 }
 
 export function saveWorldToLocalStorage(year: number, board: Board): void {

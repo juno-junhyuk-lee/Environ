@@ -24,6 +24,15 @@ body {
   cursor: pointer;
 }
 
+.world-controls button:disabled {
+  cursor: wait;
+}
+
+.world-feedback {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 /* A fixed height (not min-height), so the 3D canvas can measure itself. */
 .app {
   display: grid;
