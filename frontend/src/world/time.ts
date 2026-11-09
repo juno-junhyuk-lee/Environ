@@ -1,8 +1,8 @@
 import { applyToBoard } from "./rules.ts";
 import type { Board } from "./board.ts";
 
-/** Provisional: 1 simulation step = 1 year, every 2 seconds. */
-export const DEFAULT_TIME_STEP_INTERVAL_MS = 2000;
+/** 1 simulation step = 1 year, every 10 seconds. */
+export const DEFAULT_TIME_STEP_INTERVAL_MS = 10000;
 
 export interface TimeSimulationState {
   currentYear: number;
