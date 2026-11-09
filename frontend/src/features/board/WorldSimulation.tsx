@@ -1,4 +1,5 @@
 import type { Tile } from "./board.ts";
+import { ELEMENT_DRAG_TYPE } from "./elementDrag.ts";
 import { TilePreview } from "./TilePreview.tsx";
 
 const ELEMENT_BUTTONS: readonly { element: Tile["element"]; label: string }[] =
@@ -18,10 +19,19 @@ export function WorldSimulation() {
         <button type="button">Resume</button>
       </div>
 
-      <h3>Tap and drag a tile to the board</h3>
+      <h3>Drag an element onto a board tile</h3>
       <div className="world-simulation-controls">
         {ELEMENT_BUTTONS.map(({ element, label }) => (
-          <button key={element} type="button" className="element-button">
+          <button
+            key={element}
+            type="button"
+            className="element-button"
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = "copy";
+              event.dataTransfer.setData(ELEMENT_DRAG_TYPE, element);
+            }}
+          >
             <TilePreview element={element} />
             <span>{label}</span>
           </button>
