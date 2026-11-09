@@ -137,7 +137,7 @@ settlement use.
 | Requirement   | How this module meets it                                                            |
 | ------------- | ----------------------------------------------------------------------------------- |
 | **2.5–2.6**   | Two-phase yearly update via `applyToBoard`                                          |
-| **2.10–2.12** | Forest↔settlement conversion at 0; water never converts                            |
+| **2.10–2.12** | Forest↔settlement conversion at 0; water never converts                             |
 | **2.15**      | Rates live in adjustable `SIMULATION_RATES`                                         |
 | Timing note   | SSDS mentioned a provisional 2-second step; this build uses **10 seconds** per year |
 
