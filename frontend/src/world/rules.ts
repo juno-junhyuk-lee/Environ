@@ -1,102 +1,148 @@
 import type { Tile } from "../features/board/board.ts";
 import { getNeighbors, type Board } from "./board.ts";
 import { FOREST, FRESH_WATER_BODY, HUMAN_SETTLEMENT } from "./elements.ts";
-import { clampCondition, setNewElement } from "./tile.ts";
+import { clampCondition } from "./tile.ts";
 
-/** All provisional rates — tune freely without changing rule structure. */
+/** All tunable rates — adjust freely without changing formula structure. */
 export const SIMULATION_RATES = {
-  healthyThreshold: 50,
+  /** Condition after forest↔settlement conversion (design choice, not SSDS). */
+  conversionRestartCondition: 30,
   forest: {
-    /** Forest condition increase per step. */
-    regrowth: 3,
-    /** Penalty per adjacent Human Settlement. */
-    settlementPenalty: 8,
+    growthRate: 0.1,
+    carryingCapacity: 100,
+    waterSupportBase: 0.8,
+    waterSupportScale: 0.4,
+    pressureRate: 0.15,
+    deltaMin: -8,
+    deltaMax: 6,
   },
   freshWater: {
-    /** Gain per adjacent Forest. */
-    forestBonus: 4,
-    /** Loss per adjacent Human Settlement. */
-    settlementPenalty: 6,
+    rechargeRate: 0.1,
+    forestSupportBase: 0.6,
+    forestSupportScale: 0.6,
+    useRate: 0.12,
+    deltaMin: -8,
+    deltaMax: 6,
   },
   settlement: {
-    /** Growth when both healthy Forest and healthy Water neighbours exist. */
-    growth: 5,
-    /** Decline otherwise. */
-    decline: 4,
+    growthRate: 0.08,
+    carryingCapacityFloor: 10,
+    carryingCapacitySpan: 90,
+    alleeThreshold: 18,
+    alleePenalty: 1.5,
+    deltaMin: -5,
+    deltaMax: 4,
   },
 } as const;
 
-function countAdjacent(neighbors: Tile[], element: Tile["element"]): number {
-  return neighbors.filter((neighbor) => neighbor.element === element).length;
-}
-
-function hasHealthyNeighbor(
+function meanAdjacentCondition(
   neighbors: Tile[],
   element: Tile["element"],
-  threshold: number,
-): boolean {
-  return neighbors.some(
-    (neighbor) =>
-      neighbor.element === element && neighbor.conditionValue >= threshold,
+): number {
+  const matching = neighbors.filter((neighbor) => neighbor.element === element);
+  if (matching.length === 0) {
+    return 0;
+  }
+  const total = matching.reduce(
+    (sum, neighbor) => sum + neighbor.conditionValue,
+    0,
   );
+  return total / matching.length;
+}
+
+/** S = sum of adjacent settlement conditions / 100. */
+function settlementLoad(neighbors: Tile[]): number {
+  return (
+    neighbors
+      .filter((neighbor) => neighbor.element === HUMAN_SETTLEMENT.name)
+      .reduce((sum, neighbor) => sum + neighbor.conditionValue, 0) / 100
+  );
+}
+
+function capDelta(delta: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, delta));
 }
 
 /** Next forest health from current tile + neighbours (does not mutate). */
 export function evaluateForest(tile: Tile, neighbors: Tile[]): number {
-  const settlementCount = countAdjacent(neighbors, HUMAN_SETTLEMENT.name);
-  const next =
-    tile.conditionValue +
-    SIMULATION_RATES.forest.regrowth -
-    settlementCount * SIMULATION_RATES.forest.settlementPenalty;
-  return clampCondition(next);
+  const rates = SIMULATION_RATES.forest;
+  const C = tile.conditionValue;
+  const W = meanAdjacentCondition(neighbors, FRESH_WATER_BODY.name);
+  const S = settlementLoad(neighbors);
+
+  const growth =
+    rates.growthRate *
+    C *
+    (1 - C / rates.carryingCapacity) *
+    (rates.waterSupportBase + (rates.waterSupportScale * W) / 100);
+  const pressure = rates.pressureRate * C * S;
+  const delta = capDelta(growth - pressure, rates.deltaMin, rates.deltaMax);
+  return clampCondition(C + delta);
 }
 
 /** Next water quality from current tile + neighbours (does not mutate). */
 export function evaluateFreshWater(tile: Tile, neighbors: Tile[]): number {
-  const forestCount = countAdjacent(neighbors, FOREST.name);
-  const settlementCount = countAdjacent(neighbors, HUMAN_SETTLEMENT.name);
-  const next =
-    tile.conditionValue +
-    forestCount * SIMULATION_RATES.freshWater.forestBonus -
-    settlementCount * SIMULATION_RATES.freshWater.settlementPenalty;
-  return clampCondition(next);
+  const rates = SIMULATION_RATES.freshWater;
+  const W_tile = tile.conditionValue;
+  const F = meanAdjacentCondition(neighbors, FOREST.name);
+  const S = settlementLoad(neighbors);
+
+  const recharge =
+    rates.rechargeRate *
+    (100 - W_tile) *
+    (rates.forestSupportBase + (rates.forestSupportScale * F) / 100);
+  const use = rates.useRate * W_tile * S;
+  const delta = capDelta(recharge - use, rates.deltaMin, rates.deltaMax);
+  return clampCondition(W_tile + delta);
 }
 
 /**
  * Next settlement population from current tile + neighbours (does not mutate).
- * Grows only when both a healthy Forest and a healthy Water neighbour exist.
+ * Carrying capacity K depends on the geometric mean of adjacent forest and
+ * water quality; both are required.
  */
 export function evaluateSettlements(tile: Tile, neighbors: Tile[]): number {
-  const threshold = SIMULATION_RATES.healthyThreshold;
-  const hasForest = hasHealthyNeighbor(neighbors, FOREST.name, threshold);
-  const hasWater = hasHealthyNeighbor(
-    neighbors,
-    FRESH_WATER_BODY.name,
-    threshold,
-  );
-  const delta =
-    hasForest && hasWater
-      ? SIMULATION_RATES.settlement.growth
-      : -SIMULATION_RATES.settlement.decline;
-  return clampCondition(tile.conditionValue + delta);
+  const rates = SIMULATION_RATES.settlement;
+  const C = tile.conditionValue;
+  const F = meanAdjacentCondition(neighbors, FOREST.name);
+  const W = meanAdjacentCondition(neighbors, FRESH_WATER_BODY.name);
+
+  const R = Math.sqrt((F / 100) * (W / 100));
+  const K = rates.carryingCapacityFloor + rates.carryingCapacitySpan * R;
+  let delta = rates.growthRate * C * (1 - C / K);
+  if (C < rates.alleeThreshold) {
+    delta -= rates.alleePenalty;
+  }
+  delta = capDelta(delta, rates.deltaMin, rates.deltaMax);
+  return clampCondition(C + delta);
 }
 
 /**
  * Applies conversion rules to a tile whose condition has already been updated.
- * Forest at 0 → Settlement; Settlement at 0 → Forest; Water never converts.
- * Converted tiles start at the new element's defaultCondition.
+ * Forest at 0 → Settlement at 30; Settlement at 0 → Forest at 30;
+ * Water never converts. Restart 30 is set here (not via element defaultCondition).
  */
 export function convertTile(tile: Tile): Tile {
   if (tile.conditionValue !== 0) {
     return tile;
   }
 
+  const restart = SIMULATION_RATES.conversionRestartCondition;
+
   if (tile.element === FOREST.name) {
-    return setNewElement(tile, HUMAN_SETTLEMENT.name);
+    return {
+      ...tile,
+      element: HUMAN_SETTLEMENT.name,
+      conditionValue: restart,
+    };
   }
 
   if (tile.element === HUMAN_SETTLEMENT.name) {
-    return setNewElement(tile, FOREST.name);
+    return {
+      ...tile,
+      element: FOREST.name,
+      conditionValue: restart,
+    };
   }
 
   // Fresh water never converts.

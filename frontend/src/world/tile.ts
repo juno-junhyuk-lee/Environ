@@ -34,9 +34,11 @@ export function setNewElement(tile: Tile, element: ElementName): Tile {
   };
 }
 
+/** Clamps to 0–100 keeping one decimal place so small logistic Δ values accumulate. */
 export function clampCondition(value: number): number {
   if (Number.isNaN(value)) {
     return 0;
   }
-  return Math.min(100, Math.max(0, Math.round(value)));
+  const rounded = Math.round(value * 10) / 10;
+  return Math.min(100, Math.max(0, rounded));
 }
