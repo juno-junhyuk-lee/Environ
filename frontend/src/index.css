@@ -1,6 +1,25 @@
 :root {
+  /* Element colours, picked to match the Kenney Hexagon Kit models. */
+  --color-forest: #4a8a3a;
+  --color-water: #2f86c0;
+  --color-settlement: #c0623a;
+  /* Darker versions for text: at least 5.8:1 on white (WCAG AA is 4.5:1). */
+  --color-forest-ink: #356b28;
+  --color-water-ink: #1f6a9c;
+  --color-settlement-ink: #9c4826;
+
+  --color-ink: #1f2a24;
+  --color-muted: #55635b;
+  --rule: rgb(31 42 36 / 15%);
+  --surface: #ffffff;
+
+  --font-comic: "Comic Sans MS", "Comic Sans", "Comic Neue", cursive;
+
+  --radius-md: 0.875rem;
+  --shadow-lg: 0 12px 32px rgb(31 42 36 / 22%);
+
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
-  color: black;
+  color: var(--color-ink);
   /* The 3D canvas is transparent, so this colour is also the board's sky. */
   background: #e8f3f7;
 }
@@ -9,53 +28,125 @@ body {
   margin: 0;
 }
 
+/* Reset, save and load: bare icons in the header, no box around them. */
 .world-controls {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.25rem;
 }
 
-.world-controls button {
-  min-height: 44px;
-  padding: 0.5rem 1rem;
-  font: inherit;
-  cursor: pointer;
-}
-
-.world-controls button:disabled {
-  cursor: wait;
-}
-
-.world-feedback {
-  flex-basis: 100%;
-  margin: 0;
-}
-
-.world-simulation-controls {
+.world-control-row {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.25rem;
 }
 
-.world-simulation-controls button {
-  padding: 0.5rem 1rem;
-  font: inherit;
-  min-height: 44px;
+/* 44px square: big enough to tap. The icon is the only thing drawn. */
+.world-control {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
   cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 120ms ease-out;
 }
 
-.tile-preview {
-  width: 72px;
-  height: 72px;
+.world-control:hover,
+.world-control:focus-visible {
+  opacity: 1;
+}
+
+.world-control:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+.world-control:disabled {
+  cursor: wait;
+  opacity: 0.35;
+}
+
+.world-control img {
+  display: block;
   pointer-events: none;
 }
 
-/* A fixed height (not min-height), so the 3D canvas can measure itself. */
+/* Comic speech bubble with the button's label. Every button's bubble pops up
+   in the same spot: centred below the row of icons. */
+.speech-bubble {
+  --ink: #111;
+
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 30;
+  padding: 0.3rem 0.8rem 0.4rem;
+  color: var(--ink);
+  font-family: var(--font-comic);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 1.1rem;
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: none;
+  opacity: 0;
+  translate: -50% 0;
+  scale: 0.6;
+  transform-origin: center top;
+}
+
+/* Pops in, but vanishes at once: the bubbles share one spot, so the last
+   one must be gone before the next appears. */
+.world-control:hover .speech-bubble,
+.world-control:focus-visible .speech-bubble {
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity 120ms ease-out,
+    scale 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.world-feedback {
+  margin: 0 0.5rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.world-feedback.is-error {
+  color: #a3271f;
+}
+
+/* Sized where each preview is used (the pane's icons, the held piece). */
+.tile-preview {
+  pointer-events: none;
+}
+
+/* Read by screen readers, but not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+/* A fixed height (not min-height), so the 3D canvas can measure itself. The
+   column is capped at the screen width: the board's aspect-ratio box would
+   otherwise ask for 1.06 x its height and widen the page on phones. */
 .app {
   display: grid;
   grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr);
   height: 100vh;
   height: 100dvh;
 }
@@ -67,6 +158,10 @@ body {
 }
 
 .app-header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
   padding: 1.5rem 1.5rem 0;
 }
 
@@ -79,18 +174,43 @@ body {
 }
 
 .app-main {
+  position: relative;
   display: flex;
   min-height: 0;
 }
 
-.app-side {
-  flex: 1;
-  min-width: 0;
-  padding: 1.5rem;
+/* Wide screens: the elements pane against the left edge, the playback
+   buttons against the right, and the board centred between them. (The auto
+   margins share the spare space out either side of the board.) */
+@media (width >= 48rem) {
+  .app-main > .board-area {
+    margin-inline: auto;
+  }
+}
+
+.app-credit {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 0.5rem;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.app-credit a {
+  color: inherit;
 }
 
 @media (width < 48rem) {
   .app-main {
     flex-direction: column-reverse;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-control,
+  .world-control:hover .speech-bubble,
+  .world-control:focus-visible .speech-bubble {
+    transition: none;
   }
 }

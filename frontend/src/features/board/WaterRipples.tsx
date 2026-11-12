@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import type { BufferGeometry, Mesh, MeshBasicMaterial } from "three";
+import { prefersReducedMotion } from "./motion.ts";
 import {
   RIPPLE_PERIOD_SECONDS,
   RIPPLE_SPOTS,
@@ -12,14 +13,6 @@ type Ring = Mesh<BufferGeometry, MeshBasicMaterial>;
 
 const STILL_CYCLE = 0.5;
 const ABOVE_WATER = 0.002;
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
 
 interface WaterRipplesProps {
   surfaceHeight: number;
