@@ -1,0 +1,310 @@
+/* Sits beside the board (the board re-frames to the space left over). Its
+   only edge is a faint line that fades out at both ends. */
+.elements-pane {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: 0 1.5rem;
+}
+
+.elements-pane::after {
+  position: absolute;
+  top: 15%;
+  right: 0;
+  bottom: 15%;
+  width: 1px;
+  content: "";
+  background: var(--color-ink);
+  opacity: 0.12;
+  mask-image: linear-gradient(transparent, black 25%, black 75%, transparent);
+}
+
+.elements-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.element-slot {
+  position: relative;
+}
+
+.element-slot[data-element="forest"] {
+  --accent: var(--color-forest);
+  --accent-ink: var(--color-forest-ink);
+}
+
+.element-slot[data-element="fresh_water_body"] {
+  --accent: var(--color-water);
+  --accent-ink: var(--color-water-ink);
+}
+
+.element-slot[data-element="human_settlement"] {
+  --accent: var(--color-settlement);
+  --accent-ink: var(--color-settlement-ink);
+}
+
+/* No box: the 3D tile floats on the page. Hover feedback is the tile lifting
+   inside its canvas (TilePreview), not a CSS effect. */
+.element-icon {
+  display: block;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: grab;
+}
+
+.element-icon:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: -2px;
+}
+
+.element-icon:active {
+  cursor: grabbing;
+}
+
+/* Pieces are picked up with pointer events: a finger drags the piece instead
+   of scrolling the page, and a long press doesn't select anything. */
+.element-icon {
+  touch-action: none;
+  user-select: none;
+}
+
+.element-icon .tile-preview,
+.held-piece {
+  width: 8.5rem;
+  height: 8.5rem;
+}
+
+/* Its piece is out: the slot keeps its size but shows empty. */
+.element-slot.is-empty .element-icon .tile-preview {
+  visibility: hidden;
+}
+
+/* After a piece is placed, a new one appears in its slot. */
+.element-slot.is-refilling .element-icon .tile-preview {
+  animation: element-refill 220ms ease-out;
+}
+
+@keyframes element-refill {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
+
+/* The piece in hand. Follows the pointer (JS sets `translate`); its phase
+   comes from JS as data-phase. */
+.held-piece {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  visibility: hidden;
+  transition:
+    scale 150ms ease-out,
+    opacity 150ms ease-out;
+}
+
+.held-piece .tile-preview {
+  width: 100%;
+  height: 100%;
+}
+
+/* The piece must never catch the pointer: the board finds the tile under it
+   by hit-testing. React Three Fiber sets an inline `pointer-events: auto` on
+   its canvas wrapper, so only !important overrides it. */
+.held-piece,
+.held-piece * {
+  pointer-events: none !important;
+}
+
+.held-piece[data-phase] {
+  visibility: visible;
+}
+
+/* Over a tile: shrinks towards the pointer so the highlighted tile shows. */
+.held-piece.is-over-tile {
+  scale: 0.55;
+  opacity: 0.9;
+}
+
+/* Put down: sinks into the tile, which changes underneath it. */
+.held-piece[data-phase="placing"] {
+  scale: 0.3;
+  opacity: 0;
+  transition-timing-function: ease-in;
+}
+
+/* Let go off the board: glides back to its slot. */
+.held-piece[data-phase="returning"] {
+  scale: 1;
+  opacity: 1;
+  transition:
+    translate 240ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    scale 240ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    opacity 240ms ease-out;
+}
+
+/* Holding a piece: the grabbing hand everywhere, over the board too. */
+.is-holding-element,
+.is-holding-element * {
+  cursor: grabbing !important;
+}
+
+/* The card. Opens and closes from JS (`.is-open`) with tooltip timing: it
+   fades in quickly and disappears at once. */
+
+.element-card {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 2rem);
+  width: 20rem;
+  padding: 1rem 1.25rem 1.25rem;
+  color: var(--color-ink);
+  font-size: 1rem;
+  line-height: 1.5;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.element-slot.is-open .element-card {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 120ms ease-out;
+}
+
+/* Keep the first and last cards level with the icon column, so a tall card
+   never runs off a short screen. */
+.element-slot:first-child .element-card {
+  top: 0;
+  transform: none;
+}
+
+.element-slot:last-child .element-card {
+  top: auto;
+  bottom: 0;
+  transform: none;
+}
+
+.element-card-name {
+  display: block;
+  padding-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  border-bottom: 2px solid var(--accent);
+}
+
+.element-card-moves {
+  display: grid;
+  gap: 0.875rem;
+  margin: 0.875rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.element-card-move {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.element-card-move strong {
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.element-card-move span,
+.element-card-weakness,
+.element-card-flavor {
+  text-wrap: pretty;
+}
+
+.element-card-weakness {
+  margin: 1rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.element-card-label {
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+.element-card-flavor {
+  margin: 0.5rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.9375rem;
+  font-style: italic;
+}
+
+/* Narrow screens: a row under the board, the faint line above it, and cards
+   opening upwards centred on the row so they never run off the screen. */
+@media (width < 48rem) {
+  .elements-pane {
+    justify-content: center;
+    padding: 1rem 1rem 1.5rem;
+  }
+
+  .elements-pane::after {
+    top: 0;
+    right: 15%;
+    bottom: auto;
+    left: 15%;
+    width: auto;
+    height: 1px;
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 25%,
+      black 75%,
+      transparent
+    );
+  }
+
+  .elements-list {
+    grid-auto-flow: column;
+  }
+
+  .element-slot {
+    position: static;
+  }
+
+  .element-icon .tile-preview,
+  .held-piece {
+    width: 6.5rem;
+    height: 6.5rem;
+  }
+
+  .element-card,
+  .element-slot:first-child .element-card,
+  .element-slot:last-child .element-card {
+    top: auto;
+    bottom: calc(100% + 0.5rem);
+    left: 50%;
+    width: min(20rem, calc(100vw - 2rem));
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .element-slot.is-open .element-card,
+  .held-piece,
+  .held-piece[data-phase="returning"] {
+    transition: none;
+  }
+
+  .element-slot.is-refilling .element-icon .tile-preview {
+    animation: none;
+  }
+}

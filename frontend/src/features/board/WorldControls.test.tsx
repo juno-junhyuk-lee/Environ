@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   createDefaultWorld,
@@ -15,10 +21,11 @@ afterEach(() => {
 });
 
 function TileEditor() {
-  const { tiles } = useBoard();
+  const { tiles, year } = useBoard();
   const { placeElement } = useBoardActions();
   return (
     <>
+      <span aria-label="Year">{year}</span>
       <span aria-label="Center element">
         {tiles.find((tile) => tile.id === "0,0")?.element}
       </span>
@@ -44,7 +51,7 @@ it("resets the shared board after an edit and on repeated clicks", () => {
       <TileEditor />
     </BoardProvider>,
   );
-  expect(screen.getByText("Year 0")).toBeInTheDocument();
+  expect(screen.getByLabelText("Year")).toHaveTextContent(/^0$/);
   expect(screen.getByLabelText("Center element")).toHaveTextContent(
     "fresh_water_body",
   );
@@ -88,11 +95,11 @@ it("loads all world fields, allows repeated file selection, and resets to defaul
   const read = () => Promise.resolve(worldSaveToJson(save));
   upload(read);
   expect(await screen.findByRole("status")).toHaveTextContent("World loaded.");
-  expect(screen.getByText("Year 37")).toBeInTheDocument();
+  expect(screen.getByLabelText("Year")).toHaveTextContent(/^37$/);
   expect(screen.getByLabelText("Center element")).toHaveTextContent("forest");
   expect(screen.getByLabelText("Center condition")).toHaveTextContent("83");
   fireEvent.click(screen.getByRole("button", { name: "Reset world" }));
-  expect(screen.getByText("Year 0")).toBeInTheDocument();
+  expect(screen.getByLabelText("Year")).toHaveTextContent(/^0$/);
   expect(screen.getByLabelText("Center element")).toHaveTextContent(
     "fresh_water_body",
   );
@@ -100,7 +107,7 @@ it("loads all world fields, allows repeated file selection, and resets to defaul
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   upload(read);
   expect(await screen.findByRole("status")).toHaveTextContent("World loaded.");
-  expect(screen.getByText("Year 37")).toBeInTheDocument();
+  expect(screen.getByLabelText("Year")).toHaveTextContent(/^37$/);
 });
 
 it("keeps the edited world unchanged when loading fails", async () => {
@@ -108,7 +115,7 @@ it("keeps the edited world unchanged when loading fails", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Edit center" }));
   upload(() => Promise.resolve("{"));
   expect(await screen.findByRole("alert")).toHaveTextContent("valid JSON");
-  expect(screen.getByText("Year 0")).toBeInTheDocument();
+  expect(screen.getByLabelText("Year")).toHaveTextContent(/^0$/);
   expect(screen.getByLabelText("Center element")).toHaveTextContent("forest");
   upload(() => Promise.resolve(JSON.stringify({ format: "wrong" })));
   expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -131,18 +138,62 @@ it("disables world controls until a pending load completes", async () => {
   expect(screen.getByRole("button", { name: "Save world" })).toBeDisabled();
   finish?.("{");
   await screen.findByRole("alert");
-  expect(screen.getByRole("button", { name: "Load world" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Upload world" })).toBeEnabled();
 });
 
 it("opens the file picker and handles cancellation", () => {
   renderControls();
   const input = screen.getByLabelText("World save file");
   const click = vi.spyOn(input, "click");
-  fireEvent.click(screen.getByRole("button", { name: "Load world" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload world" }));
   expect(click).toHaveBeenCalledOnce();
   fireEvent.change(input, { target: { files: [] } });
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  expect(screen.getByText("Year 0")).toBeInTheDocument();
+  expect(screen.getByLabelText("Year")).toHaveTextContent(/^0$/);
+});
+
+it("shows reset, save and upload as icons, each with its speech bubble", () => {
+  renderControls();
+  for (const name of ["Reset world", "Save world", "Upload world"]) {
+    const button = screen.getByRole("button", { name });
+    const bubble = button.querySelector(".speech-bubble");
+    expect(button.querySelector("img")).toHaveAttribute("alt", "");
+    expect(bubble).toHaveTextContent(name);
+    expect(bubble).toHaveAttribute("aria-hidden", "true");
+  }
+});
+
+it("fades a success message out, but keeps an error until the next action", async () => {
+  vi.useFakeTimers();
+  try {
+    vi.stubGlobal("URL", {
+      createObjectURL: () => "blob:world",
+      revokeObjectURL: () => undefined,
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      () => undefined,
+    );
+    renderControls();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save world" }));
+    expect(screen.getByRole("status")).toHaveTextContent("World exported.");
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    upload(() => Promise.resolve("{"));
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("valid JSON");
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("exports the current edited world and reports download failures", async () => {

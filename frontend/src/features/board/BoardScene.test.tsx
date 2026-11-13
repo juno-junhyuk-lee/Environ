@@ -12,6 +12,8 @@ import { axialToWorld } from "./geometry.ts";
 import { type BoardActions, useBoardActions } from "./boardContext.ts";
 import { BoardProvider } from "./BoardProvider.tsx";
 import { BoardScene } from "./BoardScene.tsx";
+import { useElementDragActions } from "./elementDrag.ts";
+import { ElementDragProvider } from "./ElementDragProvider.tsx";
 import { boardReducer } from "./boardState.ts";
 import { ELEMENT_MODELS } from "./models.ts";
 
@@ -42,7 +44,9 @@ vi.mock("@react-three/drei", async () => {
 function renderBoard(initialBoard?: Board) {
   return ReactThreeTestRenderer.create(
     <BoardProvider initialBoard={initialBoard}>
-      <BoardScene />
+      <ElementDragProvider>
+        <BoardScene />
+      </ElementDragProvider>
     </BoardProvider>,
   );
 }
@@ -120,7 +124,9 @@ describe("BoardScene", () => {
 
     const renderer = await ReactThreeTestRenderer.create(
       <BoardProvider>
-        <BoardScene />
+        <ElementDragProvider>
+          <BoardScene />
+        </ElementDragProvider>
         <CaptureActions onReady={(a) => (actions = a)} />
       </BoardProvider>,
     );
@@ -158,6 +164,43 @@ describe("BoardScene", () => {
     });
     expect(modelUrl(renderer, "0,0")).toBe(ELEMENT_MODELS.forest.url);
     expect(modelUrl(renderer, "1,-1")).toBe(ELEMENT_MODELS.forest.url);
+  });
+
+  it("pops the drop target up from its neighbours, then settles it back", async () => {
+    let setDropTarget: ((tileId: string | null) => void) | undefined;
+    function CaptureDrag() {
+      setDropTarget = useElementDragActions().setDropTarget;
+      return null;
+    }
+    const renderer = await ReactThreeTestRenderer.create(
+      <BoardProvider>
+        <ElementDragProvider>
+          <BoardScene />
+          <CaptureDrag />
+        </ElementDragProvider>
+      </BoardProvider>,
+    );
+    const popHeight = (tileId: string) =>
+      tilePart(renderer, tileId, "tile-pop").position.y;
+
+    await ReactThreeTestRenderer.act(async () => {
+      setDropTarget?.("0,0");
+      await Promise.resolve();
+    });
+    await ReactThreeTestRenderer.act(async () => {
+      await renderer.advanceFrames(30, 0.1);
+    });
+    expect(popHeight("0,0")).toBeGreaterThan(0.05);
+    expect(popHeight("1,0")).toBe(0);
+
+    await ReactThreeTestRenderer.act(async () => {
+      setDropTarget?.(null);
+      await Promise.resolve();
+    });
+    await ReactThreeTestRenderer.act(async () => {
+      await renderer.advanceFrames(30, 0.1);
+    });
+    expect(popHeight("0,0")).toBe(0);
   });
 
   it("draws the border at the ground height of the tile's model", async () => {

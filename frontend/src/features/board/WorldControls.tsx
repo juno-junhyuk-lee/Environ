@@ -1,16 +1,63 @@
-import { type ChangeEvent, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { exportWorldToFile, importWorldFromFile } from "../../world/index.ts";
 import { useBoard, useBoardActions } from "./boardContext.ts";
 
+const ICON_DIR = `${import.meta.env.BASE_URL}icons/`;
+
+/** Success messages fade out after this; errors stay until the next action. */
+const STATUS_VISIBLE_MS = 3000;
+
+interface Feedback {
+  text: string;
+  error: boolean;
+}
+
+interface IconButtonProps {
+  label: string;
+  icon: string;
+  disabled: boolean;
+  onClick: () => void;
+}
+
+/**
+ * Icon only. On hover or keyboard focus its label pops up in a comic speech
+ * bubble centred below the row of icons; screen readers get the same label
+ * as its name.
+ */
+function IconButton({ label, icon, disabled, onClick }: IconButtonProps) {
+  return (
+    <button
+      type="button"
+      className="world-control"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <img src={`${ICON_DIR}${icon}`} alt="" width={28} height={28} />
+      <span className="speech-bubble" aria-hidden="true">
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/** Reset, save and load the world: a row of icons tucked into the header. */
 export function WorldControls() {
   const world = useBoard();
   const { resetWorld, loadWorld } = useBoardActions();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    text: string;
-    error: boolean;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+
+  useEffect(() => {
+    if (feedback === null || feedback.error) return;
+    const timer = window.setTimeout(() => {
+      setFeedback(null);
+    }, STATUS_VISIBLE_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [feedback]);
 
   function handleSave() {
     try {
@@ -50,29 +97,42 @@ export function WorldControls() {
 
   return (
     <div className="world-controls">
-      <p>Year {world.year}</p>
-      <button
-        type="button"
-        disabled={isLoading}
-        onClick={() => {
-          resetWorld();
-          setFeedback(null);
-        }}
-      >
-        Reset world
-      </button>
-      <button type="button" disabled={isLoading} onClick={handleSave}>
-        Save world
-      </button>
-      <button
-        type="button"
-        disabled={isLoading}
-        onClick={() => {
-          inputRef.current?.click();
-        }}
-      >
-        {isLoading ? "Loading…" : "Load world"}
-      </button>
+      {feedback && (
+        <p
+          className={
+            feedback.error ? "world-feedback is-error" : "world-feedback"
+          }
+          role={feedback.error ? "alert" : "status"}
+        >
+          {feedback.text}
+        </p>
+      )}
+      {/* The bubbles centre on this row, so they all pop up in one spot. */}
+      <div className="world-control-row">
+        <IconButton
+          label="Reset world"
+          icon="reset.png"
+          disabled={isLoading}
+          onClick={() => {
+            resetWorld();
+            setFeedback(null);
+          }}
+        />
+        <IconButton
+          label="Save world"
+          icon="save.png"
+          disabled={isLoading}
+          onClick={handleSave}
+        />
+        <IconButton
+          label={isLoading ? "Loading…" : "Upload world"}
+          icon="load.png"
+          disabled={isLoading}
+          onClick={() => {
+            inputRef.current?.click();
+          }}
+        />
+      </div>
       <input
         ref={inputRef}
         type="file"
@@ -84,14 +144,6 @@ export function WorldControls() {
           void handleLoad(event);
         }}
       />
-      {feedback && (
-        <p
-          className="world-feedback"
-          role={feedback.error ? "alert" : "status"}
-        >
-          {feedback.text}
-        </p>
-      )}
     </div>
   );
 }
