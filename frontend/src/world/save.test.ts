@@ -4,12 +4,16 @@ import {
   boardFromSave,
   exportWorldToFile,
   importWorldFromFile,
+  loadWorldFromLocalStorage,
+  LOCAL_STORAGE_KEY,
+  saveWorldToLocalStorage,
   serializeWorld,
   validateWorldSave,
   worldSaveToJson,
 } from "./save.ts";
 import { worldReducer } from "../features/board/boardState.ts";
-import { DEFAULT_WORLDLY_STATE } from "./worldly.ts";
+import { airQualityOf, DEFAULT_WORLDLY_STATE } from "./worldly.ts";
+import { getNeighbors } from "./board.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -40,7 +44,11 @@ describe("world saves", () => {
       type: "loadWorld",
       save: result.save,
     });
-    expect(world).toEqual({ ...boardFromSave(save), year: 37 });
+    expect(world).toEqual({
+      ...boardFromSave(save),
+      year: 37,
+      worldly: save.worldly ?? DEFAULT_WORLDLY_STATE,
+    });
     expect(world.tiles).not.toBe(result.save.tiles);
     expect(world.tiles[0]).not.toBe(result.save.tiles[0]);
     expect(worldReducer(world, { type: "resetWorld" })).toEqual(
@@ -128,16 +136,90 @@ describe("world saves", () => {
     });
   });
 
-  it("round-trips worldly metrics in a new save", () => {
+  it("export writes the passed climate into the JSON blob", async () => {
+    const worldly = {
+      temperatureC: 21,
+      carbon: 66,
+      weather: "storm" as const,
+    };
+    let blob: Blob | undefined;
+    const createObjectURL = vi.fn((value: Blob) => {
+      blob = value;
+      return "blob:world";
+    });
+    vi.stubGlobal("URL", {
+      createObjectURL,
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {
+      /* no-op */
+    });
+    exportWorldToFile(9, createDefaultWorld(), worldly);
+    if (!(blob instanceof Blob)) throw new Error("missing download blob");
+    const text = await blob.text();
+    const parsed = JSON.parse(text) as {
+      worldly: Record<string, unknown>;
+    };
+    expect(parsed.worldly).toEqual(worldly);
+    expect(Object.keys(parsed.worldly).sort()).toEqual([
+      "carbon",
+      "temperatureC",
+      "weather",
+    ]);
+  });
+
+  it("autosave round-trips a non-default climate through localStorage", () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, value);
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
+      },
+    });
     const worldly = {
       temperatureC: 17.5,
       carbon: 44,
       weather: "rainy" as const,
     };
-    const save = serializeWorld(12, createDefaultWorld(), worldly);
+    const world = createDefaultWorld();
+    saveWorldToLocalStorage(world.year, world, worldly);
+    expect(store.has(LOCAL_STORAGE_KEY)).toBe(true);
+    const loaded = loadWorldFromLocalStorage();
+    expect(loaded).toEqual({
+      ok: true,
+      save: serializeWorld(world.year, world, worldly),
+    });
+  });
+
+  it("round-trips worldly metrics in a new save without storing air quality", () => {
+    const worldly = {
+      temperatureC: 17.5,
+      carbon: 44,
+      weather: "rainy" as const,
+    };
+    const board = createDefaultWorld();
+    const centre = board.tiles.find((tile) => tile.id === "0,0");
+    if (!centre) throw new Error("missing centre");
+    const aqiBefore = airQualityOf(centre, getNeighbors(board, centre));
+    const save = serializeWorld(12, board, worldly);
     expect(save.worldly).toEqual(worldly);
+    expect(Object.keys(save.worldly ?? {}).sort()).toEqual([
+      "carbon",
+      "temperatureC",
+      "weather",
+    ]);
     const result = validateWorldSave(save);
     expect(result).toEqual({ ok: true, save });
+    if (!result.ok) throw new Error(result.error);
+    const loadedBoard = boardFromSave(result.save);
+    const loadedCentre = loadedBoard.tiles.find((tile) => tile.id === "0,0");
+    if (!loadedCentre) throw new Error("missing centre");
+    expect(
+      airQualityOf(loadedCentre, getNeighbors(loadedBoard, loadedCentre)),
+    ).toBe(aqiBefore);
   });
 
   it("loads an old version 1 save without worldly using the defaults", () => {

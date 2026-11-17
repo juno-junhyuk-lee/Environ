@@ -6,6 +6,7 @@ import {
   drawWeather,
   nextCarbon,
   nextTemperature,
+  sanitizeWorldly,
   type WorldlyState,
 } from "./worldly.ts";
 
@@ -56,18 +57,6 @@ export interface CreateTimeSimulationOptions {
   /** Injected for tests; defaults to window.setTimeout / clearTimeout. */
   setIntervalFn?: (handler: () => void, ms: number) => number;
   clearIntervalFn?: (id: number) => void;
-}
-
-function sanitizeWorldly(worldly: WorldlyState): WorldlyState {
-  return {
-    temperatureC: Number.isFinite(worldly.temperatureC)
-      ? worldly.temperatureC
-      : DEFAULT_WORLDLY_STATE.temperatureC,
-    carbon: Number.isFinite(worldly.carbon)
-      ? worldly.carbon
-      : DEFAULT_WORLDLY_STATE.carbon,
-    weather: worldly.weather,
-  };
 }
 
 export function createTimeSimulation(

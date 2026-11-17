@@ -1,15 +1,65 @@
 import { describe, expect, it } from "vitest";
 import {
   createBoardState,
+  createDefaultWorld,
+  DEFAULT_WORLDLY_STATE,
   ELEMENTS,
   getDefaultCondition,
   getTile,
   replaceTile,
+  serializeWorld,
   setConditionValue,
 } from "../../world/index.ts";
-import { boardReducer } from "./boardState.ts";
+import { boardReducer, worldReducer } from "./boardState.ts";
 
 const board = createBoardState();
+
+describe("worldReducer climate", () => {
+  it("restores a non-default climate from a save and resets to defaults", () => {
+    const climate = {
+      temperatureC: 19,
+      carbon: 71,
+      weather: "drought" as const,
+    };
+    const save = serializeWorld(12, createDefaultWorld(), climate);
+    const loaded = worldReducer(createDefaultWorld(), {
+      type: "loadWorld",
+      save,
+    });
+    expect(loaded.year).toBe(12);
+    expect(loaded.worldly).toEqual(climate);
+    expect(worldReducer(loaded, { type: "resetWorld" }).worldly).toEqual(
+      DEFAULT_WORLDLY_STATE,
+    );
+  });
+
+  it("keeps climate unchanged when placing an element", () => {
+    const climate = {
+      temperatureC: 16.5,
+      carbon: 55,
+      weather: "rainy" as const,
+    };
+    const world = { ...createDefaultWorld(), worldly: climate };
+    const next = worldReducer(world, {
+      type: "placeElement",
+      tileId: "0,0",
+      element: "forest",
+    });
+    expect(next.worldly).toEqual(climate);
+  });
+
+  it("sanitizes NaN temperature and carbon and unknown weather on setWorldly", () => {
+    const next = worldReducer(createDefaultWorld(), {
+      type: "setWorldly",
+      worldly: {
+        temperatureC: Number.NaN,
+        carbon: Number.NaN,
+        weather: "hail",
+      },
+    });
+    expect(next.worldly).toEqual(DEFAULT_WORLDLY_STATE);
+  });
+});
 
 describe("boardReducer", () => {
   it("places an element on a tile", () => {

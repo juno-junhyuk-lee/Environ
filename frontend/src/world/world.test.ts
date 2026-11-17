@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ELEMENTS, getDefaultCondition, type ElementName } from "./elements.ts";
 import { createDefaultWorld } from "./world.ts";
 import { worldReducer } from "../features/board/boardState.ts";
+import { DEFAULT_WORLDLY_STATE } from "./worldly.ts";
 
 /** Mixed default layout keyed by tile id (`q,r`). */
 const EXPECTED_LAYOUT: ReadonlyMap<string, ElementName> = new Map([
@@ -30,6 +31,7 @@ describe("default world", () => {
   it("fills 19 unique board positions at year zero with the mixed layout", () => {
     const world = createDefaultWorld();
     expect(world.year).toBe(0);
+    expect(world.worldly).toEqual(DEFAULT_WORLDLY_STATE);
     expect(world.maxTiles).toBe(19);
     expect(world.tiles).toHaveLength(19);
     expect(new Set(world.tiles.map((tile) => tile.id)).size).toBe(19);
@@ -79,14 +81,20 @@ describe("default world", () => {
     expect(changed.tiles).toHaveLength(18);
   });
 
-  it("preserves the year when editing and skips unchanged edits", () => {
-    const world = { ...createDefaultWorld(), year: 42 };
+  it("preserves the year and climate when editing and skips unchanged edits", () => {
+    const climate = {
+      temperatureC: 18,
+      carbon: 62,
+      weather: "storm" as const,
+    };
+    const world = { ...createDefaultWorld(), year: 42, worldly: climate };
     const edited = worldReducer(world, {
       type: "placeElement",
       tileId: "0,0",
       element: "forest",
     });
     expect(edited.year).toBe(42);
+    expect(edited.worldly).toEqual(climate);
     expect(edited.tiles.find((tile) => tile.id === "0,0")?.element).toBe(
       "forest",
     );

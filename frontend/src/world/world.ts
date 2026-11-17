@@ -2,9 +2,11 @@ import { createBoard } from "../features/board/board.ts";
 import { createBoardState, type Board } from "./board.ts";
 import type { ElementName } from "./elements.ts";
 import { setNewElement } from "./tile.ts";
+import { DEFAULT_WORLDLY_STATE, type WorldlyState } from "./worldly.ts";
 
 export interface World extends Board {
   year: number;
+  worldly: WorldlyState;
 }
 
 /**
@@ -42,5 +44,9 @@ export function createDefaultWorld(): World {
     return setNewElement(tile, element);
   });
 
-  return { ...createBoardState(tiles), year: 0 };
+  return {
+    ...createBoardState(tiles),
+    year: 0,
+    worldly: { ...DEFAULT_WORLDLY_STATE },
+  };
 }

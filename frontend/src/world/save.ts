@@ -164,13 +164,14 @@ export function worldSaveToJson(save: WorldSave): string {
   return `${JSON.stringify(save, null, 2)}\n`;
 }
 
-/** Downloads the current world as JSON. */
+/** Downloads the current world as JSON, including climate. */
 export function exportWorldToFile(
   year: number,
   board: Board,
+  worldly: WorldlyState = DEFAULT_WORLDLY_STATE,
   filename = "environ-world.json",
 ): void {
-  const save = serializeWorld(year, board);
+  const save = serializeWorld(year, board, worldly);
   const blob = new Blob([worldSaveToJson(save)], {
     type: "application/json",
   });
@@ -213,8 +214,12 @@ export async function importWorldFromFile(
   return validateWorldSave(parsed);
 }
 
-export function saveWorldToLocalStorage(year: number, board: Board): void {
-  const save = serializeWorld(year, board);
+export function saveWorldToLocalStorage(
+  year: number,
+  board: Board,
+  worldly: WorldlyState = DEFAULT_WORLDLY_STATE,
+): void {
+  const save = serializeWorld(year, board, worldly);
   localStorage.setItem(LOCAL_STORAGE_KEY, worldSaveToJson(save));
 }
 

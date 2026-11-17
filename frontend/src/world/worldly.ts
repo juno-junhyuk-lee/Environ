@@ -99,6 +99,28 @@ export function isWeatherKind(value: string): value is WeatherKind {
   return (WEATHER_KINDS as readonly string[]).includes(value);
 }
 
+/**
+ * Coerces climate into a safe WorldlyState: non-finite temperature/carbon
+ * fall back to the defaults; unknown weather becomes sunny.
+ */
+export function sanitizeWorldly(worldly: {
+  temperatureC: number;
+  carbon: number;
+  weather: string;
+}): WorldlyState {
+  return {
+    temperatureC: Number.isFinite(worldly.temperatureC)
+      ? worldly.temperatureC
+      : DEFAULT_WORLDLY_STATE.temperatureC,
+    carbon: Number.isFinite(worldly.carbon)
+      ? worldly.carbon
+      : DEFAULT_WORLDLY_STATE.carbon,
+    weather: isWeatherKind(worldly.weather)
+      ? worldly.weather
+      : DEFAULT_WORLDLY_STATE.weather,
+  };
+}
+
 function meanMatchingCondition(
   neighbors: Tile[],
   element: Tile["element"],

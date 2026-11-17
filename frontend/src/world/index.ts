@@ -73,6 +73,7 @@ export {
   nextCarbon,
   nextTemperature,
   ruleModifiersFor,
+  sanitizeWorldly,
   temperatureFactors,
   weatherFactors,
   type WeatherKind,

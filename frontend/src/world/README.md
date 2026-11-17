@@ -20,118 +20,19 @@ and similar hard numbers for water and settlements). That ignored neighbour
 _quality_, created a hard “healthy at 50” cliff for settlements, and could not
 express soft growth that slows near capacity. The v2 model below is logistic:
 growth depends on current condition, resource quality, and settlement load, with
-explicit caps so one bad year cannot erase a tile instantly.
+explicit caps so one bad year cannot erase a tile instantly. Climate factors
+scale growth or recharge only; pressure, use, Allee, caps, and conversions stay
+as written.
 
-## Notation
-
-| Symbol | Meaning                                                                                                           |
-| ------ | ----------------------------------------------------------------------------------------------------------------- |
-| **C**  | This tile’s own condition (0–100).                                                                                |
-| **F**  | Mean condition of adjacent forest tiles (0 if none).                                                              |
-| **W**  | Mean condition of adjacent water tiles (0 if none). For water’s own formula, **W_tile** is this tile’s condition. |
-| **S**  | Sum of adjacent settlement conditions ÷ 100. One settlement at 50 → S = 0.5; two at 70 → S = 1.4.                 |
-| **Δ**  | Change in points for one year, then clamp to 0–100.                                                               |
-
-Neighbours are the six axial cells from `getNeighbors` only — no second ring.
-
-All numeric coefficients live in the exported `SIMULATION_RATES` object so they
-can be tuned without rewriting formulas.
-
-## Forest
-
-- Growth rises with current health, slows as the forest nears 100, and is helped
-  by nearby water quality.
-- Pressure rises with forest health and settlement load **S**.
-- Yearly change is capped to **[−8, +6]**.
-
-```
-growth   = 0.10 × C × (1 − C/100) × (0.8 + 0.4 × W/100)
-pressure = 0.15 × C × S
-Δ        = growth − pressure, capped to [−8, +6]
-```
-
-**Worked example:** C = 50, W = 50, S = 0.5 → growth = 2.5, pressure = 3.75, Δ = −1.25.
-
-**Isolated forest** (no settlements, W = 0) at C = 50 → Δ = +2.0.
-
-## Fresh water
-
-- Recharge is stronger when the water is dirty (far from 100) and when nearby
-  forests are healthy.
-- Use rises with current quality and settlement load.
-- Cap **[−8, +6]**.
-
-```
-recharge = 0.10 × (100 − W_tile) × (0.6 + 0.6 × F/100)
-use      = 0.12 × W_tile × S
-Δ        = recharge − use, capped to [−8, +6]
-```
-
-**Worked example:** W_tile = 50, F = 50, S = 0.5 → recharge = 4.5, use = 3.0, Δ = +1.5.
-
-## Human settlement
-
-Settlements need **both** forest and water. Resource quality is the geometric
-mean of the two neighbour averages:
-
-```
-R = √((F/100) × (W/100))
-```
-
-If either F or W is 0, R = 0. If both are 70, R = 0.7 (not 0.49).
-
-Local carrying capacity:
-
-```
-K = 10 + 90 × R
-```
-
-K ranges from **10 to 100**. The floor is 10 (not 30) so a settlement with no
-resources can shrink far enough to convert; a floor of 30 would leave stranded
-settlements forever and the Allee rule below would never finish the job.
-
-```
-Δ = 0.08 × C × (1 − C/K)
-if C < 18: Δ −= 1.5   (soft Allee / minimum-viable-community penalty)
-then cap Δ to [−5, +4]
-```
-
-**Worked example:** C = 50, F = 70, W = 70 → R = 0.7, K = 73, Δ ≈ +1.26.
-
-**Worked example:** C = 50, water only (no forest) → R = 0, K = 10, raw Δ = −16, capped to −5.
-
-## Caps and the Allee rule
-
-Caps stop single-year swings from wiping a tile or exploding growth. The Allee
-penalty (−1.5 when C &lt; 18) models a community that is too small to sustain
-itself, so collapse finishes instead of hovering forever just above zero.
-
-## Conversions
-
-After clamping to 0–100:
-
-- **Forest at exactly 0** → Human Settlement at **30**
-- **Settlement at exactly 0** → Forest at **30**
-- **Water at 0** never converts; it stays water
-
-Conversion behaviour itself maps to SSDS Req **2.10 / 2.11**. The restart value
-**30** is a **design choice**, not in the SSDS (the SSDS gives no restart
-number; element `defaultCondition` for newly placed tiles remains **50**).
-Conversion restart is applied only in `convertTile`.
-
-A tile that just converted at 30 must not flip again in the next year solely
-because of that restart. The Δ caps keep that from happening in normal cases;
-tests cover the one-year-after-conversion case.
-
-## Default mixed world under this logic
+## Default mixed world
 
 The starter board mixes the three elements so every settlement already touches
 at least one forest neighbour and at least one water neighbour. Counts are
 **5 settlements**, **6 forests**, and **8 water** (19 tiles), all starting at
-condition 50. Left alone, towns can grow under the v2 rules: settlements
-survive for decades, carbon stays near 50, and temperature holds near 15 °C.
-A player who strips forests away from towns will still see those towns shrink
-and eventually flip to forest.
+condition 50. Left alone, towns can grow under these rules: settlements survive
+for decades, carbon stays near 50, and temperature holds near 15 °C. A player who
+strips forests away from towns will still see those towns shrink and eventually
+flip to forest.
 
 ## SSDS mapping
 
@@ -144,8 +45,8 @@ and eventually flip to forest.
 
 ## Worldly metrics
 
-Besides each tile’s health, the simulation tracks a small climate picture of
-the whole island. A player eventually sees four ideas:
+Besides each tile’s health, the simulation tracks a climate picture of the
+island. A player eventually sees four ideas:
 
 - **Air quality** — how breathable it feels around a tile this year (cleaner
   near forests, dirtier near towns). Recalculated every year; not saved.
@@ -155,127 +56,163 @@ the whole island. A player eventually sees four ideas:
 - **Weather** — this year’s sky: sunny, rainy, cloudy, drought, or storm.
   Starts **sunny**. Saved.
 
-Each year, in order: the sky is rolled from the current temperature, carbon
-moves from the board’s settlement and forest totals, temperature eases toward
-a carbon-driven target, then every tile updates using that temperature and
-weather (plus local air quality). Old saves that never stored climate load
-with the defaults above.
+Each year, in order: weather is drawn from the current temperature; carbon
+updates from the board’s settlement and forest totals; temperature eases toward
+a carbon-driven target; then every tile updates using that temperature and
+weather (plus local air quality). Climate is held on the `World` value
+(`worldly`) and written into saves.
 
 At the edges: a town with no forest nearby shrinks and can flip to forest; a
 forest that hits zero flips to a small town; water never flips. One bad year
-cannot wipe a tile because yearly change is capped. Climate lives on the time
-simulation (and in the save’s optional `worldly` field on version **1**), not
-on the `World` value itself.
+cannot wipe a tile because yearly change is capped. Old saves that never stored
+climate load with the defaults above.
 
-### Air quality (per tile, 0–100)
+### 1. How a tile changes in one year
 
-```
-AQI = 100
-    − 0.5 × meanAdjacentSettlement
-    − 0.3 × ownSettlement
-    + 0.3 × meanAdjacentForest
-```
+Notation used below:
 
-Means are over neighbouring tiles of that element (0 if none). `ownSettlement`
-is this tile’s condition when it is a settlement, otherwise 0. Result is
-clamped to 0–100 at one decimal (`clampCondition`). A board with no
-settlements yields AQI 100 on non-settlement tiles.
+| Symbol         | Meaning                                                          |
+| -------------- | ---------------------------------------------------------------- |
+| **C**          | This tile’s condition (0–100).                                   |
+| **F**          | Mean condition of adjacent forests (0 if none).                  |
+| **W**          | Mean condition of adjacent water tiles (0 if none).              |
+| **S**          | Settlement load: sum of adjacent settlement conditions ÷ 100.    |
+| **K**          | Settlement carrying capacity: `10 + 90 × √((F/100) × (W/100))`.  |
+| **Ft, Fw, Fa** | Forest temperature, weather, and air factors (see §2).           |
+| **Wt, Ww**     | Water temperature and weather factors (water has no air factor). |
+| **St, Sw, Sa** | Settlement temperature, weather, and air factors.                |
 
-Air quality scales **growth only** (not pressure / use / Allee):
+`clamp` is `clampCondition` (0–100, one decimal). `cap(Δ, min, max)` bounds the
+yearly change. Neighbours are the six axial cells from `getNeighbors` only.
 
-```
-forest growth      × (0.7 + 0.3 × AQI/100)
-settlement growth  × (0.8 + 0.2 × AQI/100)
-water              (no air factor)
-```
-
-### Carbon (global, 0–100)
+**Forest**
 
 ```
-carbon' = carbon + 0.01 × (Σ settlement conditions − Σ forest conditions)
+next = clamp(C + cap(
+  0.1 × C × (1 − C/100) × (0.8 + 0.4 × W/100) × Ft × Fw × Fa
+  − 0.15 × C × S,
+  −8, 6))
 ```
 
-Clamped to 0–100 at one decimal. Equal settlement and forest totals leave
-carbon unchanged; a board with neither leaves it unchanged as well. The **0.01**
-rate is the design value; the mixed default layout is what keeps carbon near 50.
-
-### Temperature (°C)
+**Water** (here **C** is this water tile’s own condition; no air factor)
 
 ```
-target     = 15 + (carbon − 50) × 0.2
-temperature' = temperature + 0.1 × (target − temperature)
+next = clamp(C + cap(
+  0.1 × (100 − C) × (0.6 + 0.6 × F/100) × Wt × Ww
+  − 0.12 × C × S,
+  −8, 6))
 ```
 
-Rounded to one decimal. At carbon 50 the target is 15 °C, so temperature holds
-still there.
-
-### Weather
-
-Kinds: `sunny` | `rainy` | `cloudy` | `drought` | `storm`.
-
-Base weights (sum 100): sunny 35, rainy 25, cloudy 20, drought 10, storm 10.
-Each year a seeded RNG draws `rng() × 100` against the cumulative weights in
-that order. Heat shifts weight from sunny into drought:
+**Settlement**
 
 ```
-drought += 2 × max(0, temperatureC − 20)   (taken from sunny; sunny floors at 0)
+next = clamp(C + cap(
+  0.08 × C × (1 − C/K) × St × Sw × Sa
+  − (1.5 if C < 18 else 0),
+  −5, 4))
 ```
 
-Total weight stays 100. Missing RNG falls back to `createSeededRng(Date.now())`.
+**Conversions** (after clamping to 0–100): forest at 0 becomes a settlement at
+30; settlement at 0 becomes a forest at 30; water never converts. Restart 30 is
+a design choice applied only in `convertTile` (newly placed tiles still use
+element `defaultCondition` 50).
 
-### Climate modifiers on tile rules
+Passing no climate context into `applyToBoard` / `evaluate*` keeps the plain v2
+rules (all climate factors treated as absent). The time loop always supplies a
+context.
 
-Temperature factors (then multiplied by weather factors):
+### 2. Factor glossary
 
-| Element    | Rule                                                         |
-| ---------- | ------------------------------------------------------------ |
-| Forest     | &lt; 10 °C → 0.85; ≤ 20 → 1.0; else max(0.5, 1 − 0.1×(T−20)) |
-| Water      | ≤ 15 °C → 1.0; else max(0.6, 1 − 0.04×(T−15))                |
-| Settlement | ≤ 22 °C → 1.0; else max(0.8, 1 − 0.07×(T−22))                |
-
-Weather factors `{ forest, water, settlement }`:
-
-| Weather | Factors       |
-| ------- | ------------- |
-| sunny   | 1, 1, 1       |
-| rainy   | 1.2, 1.5, 1   |
-| cloudy  | 0.9, 1, 1     |
-| drought | 0.5, 0.3, 0.9 |
-| storm   | 0.7, 1.3, 0.9 |
-
-`ruleModifiersFor(T, weather)` multiplies the two tables per element. Only
-**growth** (forest / settlement) or **recharge** (water) is scaled; pressure,
-use, Allee, Δ caps, and conversions are unchanged. All tunable numbers live in
-`WORLDLY_RATES`. At sunny / 15 °C every climate multiplier is 1.0
+Climate scales **growth** (forest / settlement) or **recharge** (water) only.
+Pressure, use, Allee, Δ caps, and conversions are never scaled. All values come
+from `WORLDLY_RATES`. At sunny / 15 °C every climate multiplier is 1.0
 (`NEUTRAL_CONTEXT`).
 
-### Yearly order (`advanceStep`)
+The **air factor** is derived per tile each year via `airQualityOf` and is
+**never stored**.
 
-Everything below reads the board at the **start** of the year:
+| Factor           | Forest                                                        | Water                                        | Settlement                                   |
+| ---------------- | ------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
+| Temperature      | T &lt; 10 → 0.85; T ≤ 20 → 1.0; else max(0.5, 1 − 0.1×(T−20)) | T ≤ 15 → 1.0; else max(0.6, 1 − 0.04×(T−15)) | T ≤ 22 → 1.0; else max(0.8, 1 − 0.07×(T−22)) |
+| Weather: sunny   | 1                                                             | 1                                            | 1                                            |
+| Weather: rainy   | 1.2                                                           | 1.5                                          | 1                                            |
+| Weather: cloudy  | 0.9                                                           | 1                                            | 1                                            |
+| Weather: drought | 0.5                                                           | 0.3                                          | 0.9                                          |
+| Weather: storm   | 0.7                                                           | 1.3                                          | 0.9                                          |
+| Air              | 0.7 + 0.3 × AQI/100                                           | — (none)                                     | 0.8 + 0.2 × AQI/100                          |
 
-1. `weather = drawWeather(rng, temperatureC)`
-2. `carbon = nextCarbon(carbon, board)`
-3. `temperatureC = nextTemperature(temperatureC, carbon)`
-4. `ctx = { temperatureC, weather }`
-5. `board = applyToBoard(board, ctx)`
-6. `year += 1`
-7. `onStep(board, year, worldly)`
+`ruleModifiersFor(T, weather)` multiplies the temperature row by the matching
+weather row per element; the air row is applied separately from the tile’s AQI.
 
-`applyToBoard(board)` with **no** context keeps plain v2 logistic rules (so
-existing unit tests stay valid). The time loop always passes `ctx`.
+### 3. The four climate numbers
 
-### Edge cases
+**Air quality** is the fourth metric and the only derived one. It is **per
+tile**, not one world number. It is recomputed fresh every year from the board:
+towns nearby make it worse and forests nearby make it better. It is never
+stored and never saved. The saved JSON carries only temperature, carbon, and
+weather; on load, air quality is recomputed from the loaded board, so nothing is
+lost.
 
-- NaN temperature or carbon falls back to the defaults (15 / 50).
-- Very hot weather: sunny weight floors at 0; drought absorbs only what sunny
-  can give, so totals stay 100.
-- AQI always clamps 0–100.
-- Conversions at condition 0 are unchanged; Δ caps still bound one-year swings.
+```
+AQI = clamp(
+  100
+  − 0.5 × (mean adjacent settlement)
+  − 0.3 × (own settlement condition, else 0)
+  + 0.3 × (mean adjacent forest)
+)
+```
 
-## Files
+Range 0–100. Not saved.
 
-- `rules.ts` — rates, evaluate\*, convertTile, applyToBoard
-- `worldly.ts` — air quality, carbon, temperature, weather, modifiers
+**Carbon** (global, saved; default 50)
+
+```
+carbon' = clamp(carbon + 0.01 × (Σ settlement conditions − Σ forest conditions))
+```
+
+**Temperature** (global °C, saved; default 15)
+
+```
+target = 15 + (carbon − 50) × 0.2
+temperature' = round1(temperature + 0.1 × (target − temperature))
+```
+
+**Weather** (global, saved; default sunny)
+
+Kinds: sunny, rainy, cloudy, drought, storm. Base weights: sunny 35, rainy 25,
+cloudy 20, drought 10, storm 10. Drought gains `2 × max(0, temperature − 20)`
+taken from sunny, with sunny floored at 0 so the total stays 100. Drawn with a
+seeded RNG (`rng() × 100` against cumulative weights in that order). Missing RNG
+falls back to `createSeededRng(Date.now())`.
+
+Yearly orchestration in `advanceStep`: draw weather → update carbon → update
+temperature → `applyToBoard(board, ctx)` → year += 1 → `onStep`.
+
+### 4. Defaults, saves, and edge cases
+
+| Field        | Default   | Saved? |
+| ------------ | --------- | ------ |
+| temperatureC | 15        | Yes    |
+| carbon       | 50        | Yes    |
+| weather      | sunny     | Yes    |
+| air quality  | (derived) | No     |
+
+Saves stay format `environ-world` version **1**. The optional `worldly` object
+holds exactly `temperatureC`, `carbon`, and `weather`. A saved JSON file now
+carries the current climate from app state, and loading restores it onto
+`World.worldly`. Air quality is not in the file; it is recomputed from the
+loaded board. Old saves without `worldly` load with the defaults. Invalid
+climate in a save is rejected and the board is left alone.
+
+NaN temperature or carbon in runtime state falls back to 15 / 50; unknown
+weather falls back to sunny. Yearly Δ caps and conversions behave as in §1.
+
+### 5. Files
+
+- `rules.ts` — `SIMULATION_RATES`, evaluate\*, convertTile, applyToBoard
+- `worldly.ts` — air quality, carbon, temperature, weather, modifiers, sanitize
+- `world.ts` — `World` (board + year + worldly), mixed `createDefaultWorld`
 - `tile.ts` — condition helpers and 1-decimal clamp
-- `time.ts` — year clock / pause / resume / worldly state (interval injectable for tests)
-- `save.ts` — serialize / validate; optional `worldly` on version 1 saves
+- `time.ts` — year clock / pause / resume / worldly step order
+- `save.ts` — serialize / validate / export / localStorage helpers with worldly
+- `index.ts` — public exports

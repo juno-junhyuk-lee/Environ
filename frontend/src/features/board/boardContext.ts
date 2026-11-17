@@ -1,10 +1,16 @@
 import { createContext, useContext } from "react";
-import type { World, ElementName, WorldSave } from "../../world/index.ts";
+import type {
+  World,
+  ElementName,
+  WorldSave,
+  WorldlyState,
+} from "../../world/index.ts";
 
 export interface BoardActions {
   resetWorld: () => void;
   loadWorld: (save: WorldSave) => void;
   placeElement: (tileId: string, element: ElementName) => void;
+  setWorldly: (worldly: WorldlyState) => void;
 }
 
 // Split so components that only change the board don't re-render when it changes.
