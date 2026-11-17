@@ -2,6 +2,12 @@ import type { Tile } from "../features/board/board.ts";
 import { getNeighbors, type Board } from "./board.ts";
 import { FOREST, FRESH_WATER_BODY, HUMAN_SETTLEMENT } from "./elements.ts";
 import { clampCondition } from "./tile.ts";
+import {
+  airQualityFactor,
+  airQualityOf,
+  ruleModifiersFor,
+  type WorldlyContext,
+} from "./worldly.ts";
 
 /** All tunable rates — adjust freely without changing formula structure. */
 export const SIMULATION_RATES = {
@@ -63,34 +69,58 @@ function capDelta(delta: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, delta));
 }
 
-/** Next forest health from current tile + neighbours (does not mutate). */
-export function evaluateForest(tile: Tile, neighbors: Tile[]): number {
+/**
+ * Next forest health from current tile + neighbours (does not mutate).
+ * Pass `ctx` to scale growth by climate and local air quality; omit it for
+ * plain v2 logistic rules (existing two-argument callers stay unchanged).
+ */
+export function evaluateForest(
+  tile: Tile,
+  neighbors: Tile[],
+  ctx?: WorldlyContext,
+): number {
   const rates = SIMULATION_RATES.forest;
   const C = tile.conditionValue;
   const W = meanAdjacentCondition(neighbors, FRESH_WATER_BODY.name);
   const S = settlementLoad(neighbors);
 
-  const growth =
+  let growth =
     rates.growthRate *
     C *
     (1 - C / rates.carryingCapacity) *
     (rates.waterSupportBase + (rates.waterSupportScale * W) / 100);
+  if (ctx !== undefined) {
+    const aqi = airQualityOf(tile, neighbors);
+    const mods = ruleModifiersFor(ctx.temperatureC, ctx.weather);
+    growth *= mods.forest * airQualityFactor("forest", aqi);
+  }
   const pressure = rates.pressureRate * C * S;
   const delta = capDelta(growth - pressure, rates.deltaMin, rates.deltaMax);
   return clampCondition(C + delta);
 }
 
-/** Next water quality from current tile + neighbours (does not mutate). */
-export function evaluateFreshWater(tile: Tile, neighbors: Tile[]): number {
+/**
+ * Next water quality from current tile + neighbours (does not mutate).
+ * Pass `ctx` to scale recharge by climate; omit it for plain v2 rules.
+ */
+export function evaluateFreshWater(
+  tile: Tile,
+  neighbors: Tile[],
+  ctx?: WorldlyContext,
+): number {
   const rates = SIMULATION_RATES.freshWater;
   const W_tile = tile.conditionValue;
   const F = meanAdjacentCondition(neighbors, FOREST.name);
   const S = settlementLoad(neighbors);
 
-  const recharge =
+  let recharge =
     rates.rechargeRate *
     (100 - W_tile) *
     (rates.forestSupportBase + (rates.forestSupportScale * F) / 100);
+  if (ctx !== undefined) {
+    const mods = ruleModifiersFor(ctx.temperatureC, ctx.weather);
+    recharge *= mods.water;
+  }
   const use = rates.useRate * W_tile * S;
   const delta = capDelta(recharge - use, rates.deltaMin, rates.deltaMax);
   return clampCondition(W_tile + delta);
@@ -100,8 +130,13 @@ export function evaluateFreshWater(tile: Tile, neighbors: Tile[]): number {
  * Next settlement population from current tile + neighbours (does not mutate).
  * Carrying capacity K depends on the geometric mean of adjacent forest and
  * water quality; both are required.
+ * Pass `ctx` to scale growth by climate and air quality; omit it for plain v2.
  */
-export function evaluateSettlements(tile: Tile, neighbors: Tile[]): number {
+export function evaluateSettlements(
+  tile: Tile,
+  neighbors: Tile[],
+  ctx?: WorldlyContext,
+): number {
   const rates = SIMULATION_RATES.settlement;
   const C = tile.conditionValue;
   const F = meanAdjacentCondition(neighbors, FOREST.name);
@@ -110,6 +145,11 @@ export function evaluateSettlements(tile: Tile, neighbors: Tile[]): number {
   const R = Math.sqrt((F / 100) * (W / 100));
   const K = rates.carryingCapacityFloor + rates.carryingCapacitySpan * R;
   let delta = rates.growthRate * C * (1 - C / K);
+  if (ctx !== undefined) {
+    const aqi = airQualityOf(tile, neighbors);
+    const mods = ruleModifiersFor(ctx.temperatureC, ctx.weather);
+    delta *= mods.settlement * airQualityFactor("settlement", aqi);
+  }
   if (C < rates.alleeThreshold) {
     delta -= rates.alleePenalty;
   }
@@ -149,25 +189,30 @@ export function convertTile(tile: Tile): Tile {
   return tile;
 }
 
-function evaluateTile(tile: Tile, neighbors: Tile[]): number {
+function evaluateTile(
+  tile: Tile,
+  neighbors: Tile[],
+  ctx?: WorldlyContext,
+): number {
   switch (tile.element) {
     case "forest":
-      return evaluateForest(tile, neighbors);
+      return evaluateForest(tile, neighbors, ctx);
     case "fresh_water_body":
-      return evaluateFreshWater(tile, neighbors);
+      return evaluateFreshWater(tile, neighbors, ctx);
     case "human_settlement":
-      return evaluateSettlements(tile, neighbors);
+      return evaluateSettlements(tile, neighbors, ctx);
   }
 }
 
 /**
  * Two-phase, pure step: read every next value from the start-of-step board,
  * then build a new board. Processing order does not affect the result.
+ * Pass `ctx` to apply worldly climate/air modifiers; omit it for plain v2.
  */
-export function applyToBoard(board: Board): Board {
+export function applyToBoard(board: Board, ctx?: WorldlyContext): Board {
   const nextTiles = board.tiles.map((tile) => {
     const neighbors = getNeighbors(board, tile);
-    const nextCondition = evaluateTile(tile, neighbors);
+    const nextCondition = evaluateTile(tile, neighbors, ctx);
     const updated: Tile = { ...tile, conditionValue: nextCondition };
     return convertTile(updated);
   });

@@ -61,3 +61,21 @@ export {
   type TimeSimulationState,
 } from "./time.ts";
 export { createDefaultWorld, type World } from "./world.ts";
+export {
+  DEFAULT_WORLDLY_STATE,
+  NEUTRAL_CONTEXT,
+  WORLDLY_RATES,
+  airQualityFactor,
+  airQualityOf,
+  createSeededRng,
+  drawWeather,
+  isWeatherKind,
+  nextCarbon,
+  nextTemperature,
+  ruleModifiersFor,
+  temperatureFactors,
+  weatherFactors,
+  type WeatherKind,
+  type WorldlyContext,
+  type WorldlyState,
+} from "./worldly.ts";

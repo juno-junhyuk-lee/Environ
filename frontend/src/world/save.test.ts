@@ -9,6 +9,7 @@ import {
   worldSaveToJson,
 } from "./save.ts";
 import { worldReducer } from "../features/board/boardState.ts";
+import { DEFAULT_WORLDLY_STATE } from "./worldly.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -125,5 +126,44 @@ describe("world saves", () => {
     await vi.waitFor(() => {
       expect(revokeObjectURL).toHaveBeenCalledWith("blob:world");
     });
+  });
+
+  it("round-trips worldly metrics in a new save", () => {
+    const worldly = {
+      temperatureC: 17.5,
+      carbon: 44,
+      weather: "rainy" as const,
+    };
+    const save = serializeWorld(12, createDefaultWorld(), worldly);
+    expect(save.worldly).toEqual(worldly);
+    const result = validateWorldSave(save);
+    expect(result).toEqual({ ok: true, save });
+  });
+
+  it("loads an old version 1 save without worldly using the defaults", () => {
+    const legacy = serializeWorld(5, createDefaultWorld());
+    const withoutWorldly = {
+      format: legacy.format,
+      version: legacy.version,
+      year: legacy.year,
+      tiles: legacy.tiles,
+    };
+    const result = validateWorldSave(withoutWorldly);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.save.worldly).toEqual(DEFAULT_WORLDLY_STATE);
+  });
+
+  it.each([
+    ["nonfinite temperature", { temperatureC: NaN }],
+    ["carbon below 0", { carbon: -1 }],
+    ["carbon above 100", { carbon: 101 }],
+    ["unknown weather", { weather: "hail" }],
+  ])("rejects worldly with %s", (_name, change) => {
+    const save = {
+      ...serializeWorld(0, createDefaultWorld()),
+      worldly: { ...DEFAULT_WORLDLY_STATE, ...change },
+    };
+    expect(validateWorldSave(save).ok).toBe(false);
   });
 });

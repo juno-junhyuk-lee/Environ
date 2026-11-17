@@ -141,8 +141,133 @@ settlement use.
 | **2.15**      | Rates live in adjustable `SIMULATION_RATES`                                         |
 | Timing note   | SSDS mentioned a provisional 2-second step; this build uses **10 seconds** per year |
 
+## Worldly metrics
+
+Four climate numbers sit beside the per-tile logistic rules. Three are
+**global state** carried year to year; one is **derived each year per tile**.
+
+| Metric           | Kind    | Default | Saved? |
+| ---------------- | ------- | ------- | ------ |
+| Air quality      | Derived | —       | No     |
+| Temperature (°C) | State   | 15      | Yes    |
+| Weather          | State   | sunny   | Yes    |
+| Carbon           | State   | 50      | Yes    |
+
+Air quality is recomputed every year from the current board. Temperature,
+carbon, and weather are stored on the time simulation and in saves (additive
+`worldly` field on format `environ-world` version **1** — no version bump).
+Old saves without `worldly` load as `{ temperatureC: 15, carbon: 50, weather: "sunny" }`.
+
+### Air quality (per tile, 0–100)
+
+```
+AQI = 100
+    − 0.5 × meanAdjacentSettlement
+    − 0.3 × ownSettlement
+    + 0.3 × meanAdjacentForest
+```
+
+Means are over neighbouring tiles of that element (0 if none). `ownSettlement`
+is this tile’s condition when it is a settlement, otherwise 0. Result is
+clamped to 0–100 at one decimal (`clampCondition`). A board with no
+settlements yields AQI 100 on non-settlement tiles.
+
+Air quality scales **growth only** (not pressure / use / Allee):
+
+```
+forest growth      × (0.7 + 0.3 × AQI/100)
+settlement growth  × (0.8 + 0.2 × AQI/100)
+water              (no air factor)
+```
+
+### Carbon (global, 0–100)
+
+```
+carbon' = carbon + 0.001 × (Σ settlement conditions − Σ forest conditions)
+```
+
+Clamped to 0–100 at one decimal. Equal settlement and forest totals leave
+carbon unchanged; a board with neither leaves it unchanged as well.
+
+### Temperature (°C)
+
+```
+target     = 15 + (carbon − 50) × 0.2
+temperature' = temperature + 0.1 × (target − temperature)
+```
+
+Rounded to one decimal. At carbon 50 the target is 15 °C, so temperature holds
+still there.
+
+### Weather
+
+Kinds: `sunny` | `rainy` | `cloudy` | `drought` | `storm`.
+
+Base weights (sum 100): sunny 35, rainy 25, cloudy 20, drought 10, storm 10.
+Each year a seeded RNG draws `rng() × 100` against the cumulative weights in
+that order. Heat shifts weight from sunny into drought:
+
+```
+drought += 2 × max(0, temperatureC − 20)   (taken from sunny; sunny floors at 0)
+```
+
+Total weight stays 100. Missing RNG falls back to `createSeededRng(Date.now())`.
+
+### Climate modifiers on tile rules
+
+Temperature factors (then multiplied by weather factors):
+
+| Element    | Rule                                                         |
+| ---------- | ------------------------------------------------------------ |
+| Forest     | &lt; 10 °C → 0.85; ≤ 20 → 1.0; else max(0.5, 1 − 0.1×(T−20)) |
+| Water      | ≤ 15 °C → 1.0; else max(0.6, 1 − 0.04×(T−15))                |
+| Settlement | ≤ 22 °C → 1.0; else max(0.8, 1 − 0.07×(T−22))                |
+
+Weather factors `{ forest, water, settlement }`:
+
+| Weather | Factors       |
+| ------- | ------------- |
+| sunny   | 1, 1, 1       |
+| rainy   | 1.2, 1.5, 1   |
+| cloudy  | 0.9, 1, 1     |
+| drought | 0.5, 0.3, 0.9 |
+| storm   | 0.7, 1.3, 0.9 |
+
+`ruleModifiersFor(T, weather)` multiplies the two tables per element. Only
+**growth** (forest / settlement) or **recharge** (water) is scaled; pressure,
+use, Allee, Δ caps, and conversions are unchanged. All tunable numbers live in
+`WORLDLY_RATES`. At sunny / 15 °C every climate multiplier is 1.0
+(`NEUTRAL_CONTEXT`).
+
+### Yearly order (`advanceStep`)
+
+Everything below reads the board at the **start** of the year:
+
+1. `weather = drawWeather(rng, temperatureC)`
+2. `carbon = nextCarbon(carbon, board)`
+3. `temperatureC = nextTemperature(temperatureC, carbon)`
+4. `ctx = { temperatureC, weather }`
+5. `board = applyToBoard(board, ctx)`
+6. `year += 1`
+7. `onStep(board, year, worldly)`
+
+`applyToBoard(board)` with **no** context keeps plain v2 logistic rules (so
+existing unit tests stay valid). The time loop always passes `ctx`.
+
+### Edge cases
+
+- NaN temperature or carbon falls back to the defaults (15 / 50).
+- Very hot weather: sunny weight floors at 0; drought absorbs only what sunny
+  can give, so totals stay 100.
+- AQI always clamps 0–100.
+- Conversions at condition 0 are unchanged; Δ caps still bound one-year swings.
+- `World` / `createDefaultWorld` are unchanged — climate lives on the time
+  simulation, not on the world value.
+
 ## Files
 
 - `rules.ts` — rates, evaluate\*, convertTile, applyToBoard
+- `worldly.ts` — air quality, carbon, temperature, weather, modifiers
 - `tile.ts` — condition helpers and 1-decimal clamp
-- `time.ts` — year clock / pause / resume (interval injectable for tests)
+- `time.ts` — year clock / pause / resume / worldly state (interval injectable for tests)
+- `save.ts` — serialize / validate; optional `worldly` on version 1 saves

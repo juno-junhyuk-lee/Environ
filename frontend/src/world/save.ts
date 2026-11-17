@@ -1,6 +1,11 @@
 import { createBoard, type Tile } from "../features/board/board.ts";
 import { MAX_TILES, type Board } from "./board.ts";
 import { isElementName } from "./elements.ts";
+import {
+  DEFAULT_WORLDLY_STATE,
+  isWeatherKind,
+  type WorldlyState,
+} from "./worldly.ts";
 
 export const WORLD_SAVE_FORMAT = "environ-world" as const;
 export const WORLD_SAVE_VERSION = 1 as const;
@@ -13,6 +18,8 @@ export interface WorldSave {
   version: typeof WORLD_SAVE_VERSION;
   year: number;
   tiles: Tile[];
+  /** Additive in v1; absent on older saves → defaults on load. */
+  worldly?: WorldlyState;
 }
 
 export type LoadWorldResult =
@@ -41,6 +48,23 @@ function isValidTile(value: unknown): value is Tile {
     Number.isFinite(conditionValue) &&
     conditionValue >= 0 &&
     conditionValue <= 100
+  );
+}
+
+function isValidWorldly(value: unknown): value is WorldlyState {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const { temperatureC, carbon, weather } = value;
+  return (
+    typeof temperatureC === "number" &&
+    Number.isFinite(temperatureC) &&
+    typeof carbon === "number" &&
+    Number.isFinite(carbon) &&
+    carbon >= 0 &&
+    carbon <= 100 &&
+    typeof weather === "string" &&
+    isWeatherKind(weather)
   );
 }
 
@@ -94,6 +118,22 @@ export function validateWorldSave(data: unknown): LoadWorldResult {
     tiles.push({ id, q, r, element, conditionValue });
   }
 
+  let worldly: WorldlyState = { ...DEFAULT_WORLDLY_STATE };
+  if (Object.hasOwn(data, "worldly")) {
+    if (!isValidWorldly(data.worldly)) {
+      return {
+        ok: false,
+        error:
+          "Worldly metrics must include finite temperatureC, carbon 0–100, and a known weather kind.",
+      };
+    }
+    worldly = {
+      temperatureC: data.worldly.temperatureC,
+      carbon: data.worldly.carbon,
+      weather: data.worldly.weather,
+    };
+  }
+
   return {
     ok: true,
     save: {
@@ -101,16 +141,22 @@ export function validateWorldSave(data: unknown): LoadWorldResult {
       version: WORLD_SAVE_VERSION,
       year: data.year,
       tiles,
+      worldly,
     },
   };
 }
 
-export function serializeWorld(year: number, board: Board): WorldSave {
+export function serializeWorld(
+  year: number,
+  board: Board,
+  worldly: WorldlyState = DEFAULT_WORLDLY_STATE,
+): WorldSave {
   return {
     format: WORLD_SAVE_FORMAT,
     version: WORLD_SAVE_VERSION,
     year,
     tiles: board.tiles.map((tile) => ({ ...tile })),
+    worldly: { ...worldly },
   };
 }
 
