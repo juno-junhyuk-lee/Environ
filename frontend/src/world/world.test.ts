@@ -1,10 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { ELEMENTS, getDefaultCondition } from "./elements.ts";
+import { ELEMENTS, getDefaultCondition, type ElementName } from "./elements.ts";
 import { createDefaultWorld } from "./world.ts";
 import { worldReducer } from "../features/board/boardState.ts";
 
+/** Mixed default layout keyed by tile id (`q,r`). */
+const EXPECTED_LAYOUT: ReadonlyMap<string, ElementName> = new Map([
+  ["0,-2", "forest"],
+  ["1,-2", "fresh_water_body"],
+  ["2,-2", "human_settlement"],
+  ["-1,-1", "fresh_water_body"],
+  ["0,-1", "human_settlement"],
+  ["1,-1", "forest"],
+  ["2,-1", "fresh_water_body"],
+  ["-2,0", "forest"],
+  ["-1,0", "fresh_water_body"],
+  ["0,0", "human_settlement"],
+  ["1,0", "forest"],
+  ["2,0", "fresh_water_body"],
+  ["-2,1", "fresh_water_body"],
+  ["-1,1", "human_settlement"],
+  ["0,1", "forest"],
+  ["1,1", "fresh_water_body"],
+  ["-2,2", "human_settlement"],
+  ["-1,2", "forest"],
+  ["0,2", "fresh_water_body"],
+]);
+
 describe("default world", () => {
-  it("fills 19 unique board positions at year zero with shared defaults", () => {
+  it("fills 19 unique board positions at year zero with the mixed layout", () => {
     const world = createDefaultWorld();
     expect(world.year).toBe(0);
     expect(world.maxTiles).toBe(19);
@@ -17,25 +40,19 @@ describe("default world", () => {
     ).toEqual([3, 4, 5, 4, 3]);
     expect(
       world.tiles.filter((tile) => tile.element === "forest"),
-    ).toHaveLength(7);
+    ).toHaveLength(6);
     expect(
       world.tiles.filter((tile) => tile.element === "fresh_water_body"),
-    ).toHaveLength(5);
+    ).toHaveLength(8);
     expect(
       world.tiles.filter((tile) => tile.element === "human_settlement"),
-    ).toHaveLength(7);
+    ).toHaveLength(5);
     for (const tile of world.tiles) {
       expect(tile.id).toBe(`${String(tile.q)},${String(tile.r)}`);
       expect(
         Math.max(Math.abs(tile.q), Math.abs(tile.r), Math.abs(tile.q + tile.r)),
       ).toBeLessThanOrEqual(2);
-      expect(tile.element).toBe(
-        tile.q === 0
-          ? "fresh_water_body"
-          : tile.q < 0
-            ? "forest"
-            : "human_settlement",
-      );
+      expect(tile.element).toBe(EXPECTED_LAYOUT.get(tile.id));
       expect(tile.conditionValue).toBe(
         getDefaultCondition(ELEMENTS[tile.element]),
       );

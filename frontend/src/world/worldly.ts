@@ -35,8 +35,8 @@ export const WORLDLY_RATES = {
     adjacentForestWeight: 0.3,
   },
   carbon: {
-    /** Tuned so a 20-year default-world run keeps carbon near 50. */
-    rate: 0.001,
+    /** Design value; the mixed default layout is what keeps carbon near 50. */
+    rate: 0.01,
   },
   temperature: {
     baseC: 15,

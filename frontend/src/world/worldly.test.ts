@@ -254,7 +254,7 @@ describe("modifiers", () => {
   });
 });
 
-describe("20-year sanity on the default striped world", () => {
+describe("20-year sanity on the default mixed world", () => {
   it("keeps carbon and temperature near defaults and close to a neutral run", () => {
     const seed = 20261117;
     const simulation = createTimeSimulation({

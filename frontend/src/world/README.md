@@ -123,14 +123,15 @@ A tile that just converted at 30 must not flip again in the next year solely
 because of that restart. The Δ caps keep that from happening in normal cases;
 tests cover the one-year-after-conversion case.
 
-## Default striped world under this logic
+## Default mixed world under this logic
 
-The current default layout is forests west (q &lt; 0), a north–south river (q = 0),
-and settlements east (q &gt; 0). Eastern settlements have water neighbours but no
-forest, so R = 0 and K = 10: they decline (capped at −5 per year) and begin
-converting to forest in roughly **8–10 years** with no intervention. Western
-forests grow. River water stays fairly stable between forest recharge and
-settlement use.
+The starter board mixes the three elements so every settlement already touches
+at least one forest neighbour and at least one water neighbour. Counts are
+**5 settlements**, **6 forests**, and **8 water** (19 tiles), all starting at
+condition 50. Left alone, towns can grow under the v2 rules: settlements
+survive for decades, carbon stays near 50, and temperature holds near 15 °C.
+A player who strips forests away from towns will still see those towns shrink
+and eventually flip to forest.
 
 ## SSDS mapping
 
@@ -143,20 +144,28 @@ settlement use.
 
 ## Worldly metrics
 
-Four climate numbers sit beside the per-tile logistic rules. Three are
-**global state** carried year to year; one is **derived each year per tile**.
+Besides each tile’s health, the simulation tracks a small climate picture of
+the whole island. A player eventually sees four ideas:
 
-| Metric           | Kind    | Default | Saved? |
-| ---------------- | ------- | ------- | ------ |
-| Air quality      | Derived | —       | No     |
-| Temperature (°C) | State   | 15      | Yes    |
-| Weather          | State   | sunny   | Yes    |
-| Carbon           | State   | 50      | Yes    |
+- **Air quality** — how breathable it feels around a tile this year (cleaner
+  near forests, dirtier near towns). Recalculated every year; not saved.
+- **Carbon** — a 0–100 score of how settlement-heavy the island is versus
+  forest. Starts at **50**. Saved.
+- **Temperature (°C)** — how warm the island is. Starts at **15**. Saved.
+- **Weather** — this year’s sky: sunny, rainy, cloudy, drought, or storm.
+  Starts **sunny**. Saved.
 
-Air quality is recomputed every year from the current board. Temperature,
-carbon, and weather are stored on the time simulation and in saves (additive
-`worldly` field on format `environ-world` version **1** — no version bump).
-Old saves without `worldly` load as `{ temperatureC: 15, carbon: 50, weather: "sunny" }`.
+Each year, in order: the sky is rolled from the current temperature, carbon
+moves from the board’s settlement and forest totals, temperature eases toward
+a carbon-driven target, then every tile updates using that temperature and
+weather (plus local air quality). Old saves that never stored climate load
+with the defaults above.
+
+At the edges: a town with no forest nearby shrinks and can flip to forest; a
+forest that hits zero flips to a small town; water never flips. One bad year
+cannot wipe a tile because yearly change is capped. Climate lives on the time
+simulation (and in the save’s optional `worldly` field on version **1**), not
+on the `World` value itself.
 
 ### Air quality (per tile, 0–100)
 
@@ -183,11 +192,12 @@ water              (no air factor)
 ### Carbon (global, 0–100)
 
 ```
-carbon' = carbon + 0.001 × (Σ settlement conditions − Σ forest conditions)
+carbon' = carbon + 0.01 × (Σ settlement conditions − Σ forest conditions)
 ```
 
 Clamped to 0–100 at one decimal. Equal settlement and forest totals leave
-carbon unchanged; a board with neither leaves it unchanged as well.
+carbon unchanged; a board with neither leaves it unchanged as well. The **0.01**
+rate is the design value; the mixed default layout is what keeps carbon near 50.
 
 ### Temperature (°C)
 
@@ -261,8 +271,6 @@ existing unit tests stay valid). The time loop always passes `ctx`.
   can give, so totals stay 100.
 - AQI always clamps 0–100.
 - Conversions at condition 0 are unchanged; Δ caps still bound one-year swings.
-- `World` / `createDefaultWorld` are unchanged — climate lives on the time
-  simulation, not on the world value.
 
 ## Files
 

@@ -210,12 +210,11 @@ describe("applyToBoard and time", () => {
     expect(byId(forward)).toEqual(byId(reverseResult));
   });
 
-  it("runs 20 years on the default world without leaving 0–100, with eastern settlements declining", () => {
+  it("runs 20 years on the default world without leaving 0–100, with settlements surviving", () => {
     const start = createDefaultWorld();
-    const easternStart = start.tiles
-      .filter((entry) => entry.q > 0)
-      .map((entry) => entry.conditionValue);
-    expect(easternStart.every((value) => value === 50)).toBe(true);
+    expect(
+      start.tiles.filter((entry) => entry.element === "human_settlement"),
+    ).toHaveLength(5);
 
     let board: Board = start;
     for (let year = 0; year < 20; year += 1) {
@@ -227,12 +226,9 @@ describe("applyToBoard and time", () => {
       }
     }
 
-    const easternEnd = board.tiles.filter((entry) => entry.q > 0);
     expect(
-      easternEnd.every(
-        (entry) => entry.conditionValue < 50 || entry.element === "forest",
-      ),
-    ).toBe(true);
+      board.tiles.filter((entry) => entry.element === "human_settlement"),
+    ).toHaveLength(5);
   });
 
   it("uses a 10000 ms step and advances exactly one year per advanceStep", () => {

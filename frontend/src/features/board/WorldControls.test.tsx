@@ -53,17 +53,17 @@ it("resets the shared board after an edit and on repeated clicks", () => {
   );
   expect(screen.getByLabelText("Year")).toHaveTextContent(/^0$/);
   expect(screen.getByLabelText("Center element")).toHaveTextContent(
-    "fresh_water_body",
+    "human_settlement",
   );
   fireEvent.click(screen.getByRole("button", { name: "Edit center" }));
   expect(screen.getByLabelText("Center element")).toHaveTextContent("forest");
   fireEvent.click(screen.getByRole("button", { name: "Reset world" }));
   expect(screen.getByLabelText("Center element")).toHaveTextContent(
-    "fresh_water_body",
+    "human_settlement",
   );
   fireEvent.click(screen.getByRole("button", { name: "Reset world" }));
   expect(screen.getByLabelText("Center element")).toHaveTextContent(
-    "fresh_water_body",
+    "human_settlement",
   );
 });
 
@@ -101,7 +101,7 @@ it("loads all world fields, allows repeated file selection, and resets to defaul
   fireEvent.click(screen.getByRole("button", { name: "Reset world" }));
   expect(screen.getByLabelText("Year")).toHaveTextContent(/^0$/);
   expect(screen.getByLabelText("Center element")).toHaveTextContent(
-    "fresh_water_body",
+    "human_settlement",
   );
   expect(screen.getByLabelText("Center condition")).toHaveTextContent("50");
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
