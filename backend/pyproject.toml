@@ -6,7 +6,10 @@ readme = "README.md"
 # Pinned to a single minor version so every developer and CI run the same Python.
 # Keep in sync with .python-version.
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = [
+    "google-genai>=3.3.0",
+    "httpx2>=2.16.2",
+]
 
 [dependency-groups]
 dev = [
