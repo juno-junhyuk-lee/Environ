@@ -1,5 +1,9 @@
 import { type ReactNode, useMemo, useReducer } from "react";
-import { type Board, createDefaultWorld } from "../../world/index.ts";
+import {
+  type Board,
+  createDefaultWorld,
+  DEFAULT_WORLDLY_STATE,
+} from "../../world/index.ts";
 import {
   type BoardActions,
   BoardActionsContext,
@@ -14,7 +18,9 @@ interface BoardProviderProps {
 
 export function BoardProvider({ children, initialBoard }: BoardProviderProps) {
   const [board, dispatch] = useReducer(worldReducer, initialBoard, (start) =>
-    start ? { ...start, year: 0 } : createDefaultWorld(),
+    start
+      ? { ...start, year: 0, worldly: { ...DEFAULT_WORLDLY_STATE } }
+      : createDefaultWorld(),
   );
 
   // `dispatch` is stable, so no dependencies.
@@ -28,6 +34,9 @@ export function BoardProvider({ children, initialBoard }: BoardProviderProps) {
       },
       placeElement: (tileId, element) => {
         dispatch({ type: "placeElement", tileId, element });
+      },
+      setWorldly: (worldly) => {
+        dispatch({ type: "setWorldly", worldly });
       },
     }),
     [],

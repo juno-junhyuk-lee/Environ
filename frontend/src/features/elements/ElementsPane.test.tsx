@@ -250,7 +250,7 @@ describe("ElementsPane", () => {
 
     it("places the element on the tile it's put down on", () => {
       renderPane();
-      expect(centreTile()).toBe("fresh_water_body");
+      expect(centreTile()).toBe("human_settlement");
 
       pickUp("Forest");
       tileUnderPointer = "0,0";
@@ -283,7 +283,7 @@ describe("ElementsPane", () => {
         vi.advanceTimersByTime(1000);
       });
       expect(isEmpty("Human Settlement")).toBe(false);
-      expect(centreTile()).toBe("fresh_water_body");
+      expect(centreTile()).toBe("human_settlement");
     });
 
     it("goes back to its slot on Escape", () => {
@@ -299,7 +299,7 @@ describe("ElementsPane", () => {
       act(() => {
         vi.advanceTimersByTime(1000);
       });
-      expect(centreTile()).toBe("fresh_water_body");
+      expect(centreTile()).toBe("human_settlement");
       expect(isEmpty("Forest")).toBe(false);
     });
   });

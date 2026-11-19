@@ -1,6 +1,11 @@
 import { createBoard, type Tile } from "../features/board/board.ts";
 import { MAX_TILES, type Board } from "./board.ts";
 import { isElementName } from "./elements.ts";
+import {
+  DEFAULT_WORLDLY_STATE,
+  isWeatherKind,
+  type WorldlyState,
+} from "./worldly.ts";
 
 export const WORLD_SAVE_FORMAT = "environ-world" as const;
 export const WORLD_SAVE_VERSION = 1 as const;
@@ -13,6 +18,8 @@ export interface WorldSave {
   version: typeof WORLD_SAVE_VERSION;
   year: number;
   tiles: Tile[];
+  /** Additive in v1; absent on older saves → defaults on load. */
+  worldly?: WorldlyState;
 }
 
 export type LoadWorldResult =
@@ -41,6 +48,23 @@ function isValidTile(value: unknown): value is Tile {
     Number.isFinite(conditionValue) &&
     conditionValue >= 0 &&
     conditionValue <= 100
+  );
+}
+
+function isValidWorldly(value: unknown): value is WorldlyState {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const { temperatureC, carbon, weather } = value;
+  return (
+    typeof temperatureC === "number" &&
+    Number.isFinite(temperatureC) &&
+    typeof carbon === "number" &&
+    Number.isFinite(carbon) &&
+    carbon >= 0 &&
+    carbon <= 100 &&
+    typeof weather === "string" &&
+    isWeatherKind(weather)
   );
 }
 
@@ -94,6 +118,22 @@ export function validateWorldSave(data: unknown): LoadWorldResult {
     tiles.push({ id, q, r, element, conditionValue });
   }
 
+  let worldly: WorldlyState = { ...DEFAULT_WORLDLY_STATE };
+  if (Object.hasOwn(data, "worldly")) {
+    if (!isValidWorldly(data.worldly)) {
+      return {
+        ok: false,
+        error:
+          "Worldly metrics must include finite temperatureC, carbon 0–100, and a known weather kind.",
+      };
+    }
+    worldly = {
+      temperatureC: data.worldly.temperatureC,
+      carbon: data.worldly.carbon,
+      weather: data.worldly.weather,
+    };
+  }
+
   return {
     ok: true,
     save: {
@@ -101,16 +141,22 @@ export function validateWorldSave(data: unknown): LoadWorldResult {
       version: WORLD_SAVE_VERSION,
       year: data.year,
       tiles,
+      worldly,
     },
   };
 }
 
-export function serializeWorld(year: number, board: Board): WorldSave {
+export function serializeWorld(
+  year: number,
+  board: Board,
+  worldly: WorldlyState = DEFAULT_WORLDLY_STATE,
+): WorldSave {
   return {
     format: WORLD_SAVE_FORMAT,
     version: WORLD_SAVE_VERSION,
     year,
     tiles: board.tiles.map((tile) => ({ ...tile })),
+    worldly: { ...worldly },
   };
 }
 
@@ -118,13 +164,14 @@ export function worldSaveToJson(save: WorldSave): string {
   return `${JSON.stringify(save, null, 2)}\n`;
 }
 
-/** Downloads the current world as JSON. */
+/** Downloads the current world as JSON, including climate. */
 export function exportWorldToFile(
   year: number,
   board: Board,
+  worldly: WorldlyState = DEFAULT_WORLDLY_STATE,
   filename = "environ-world.json",
 ): void {
-  const save = serializeWorld(year, board);
+  const save = serializeWorld(year, board, worldly);
   const blob = new Blob([worldSaveToJson(save)], {
     type: "application/json",
   });
@@ -167,8 +214,12 @@ export async function importWorldFromFile(
   return validateWorldSave(parsed);
 }
 
-export function saveWorldToLocalStorage(year: number, board: Board): void {
-  const save = serializeWorld(year, board);
+export function saveWorldToLocalStorage(
+  year: number,
+  board: Board,
+  worldly: WorldlyState = DEFAULT_WORLDLY_STATE,
+): void {
+  const save = serializeWorld(year, board, worldly);
   localStorage.setItem(LOCAL_STORAGE_KEY, worldSaveToJson(save));
 }
 

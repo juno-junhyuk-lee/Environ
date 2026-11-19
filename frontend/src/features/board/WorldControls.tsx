@@ -61,7 +61,7 @@ export function WorldControls() {
 
   function handleSave() {
     try {
-      exportWorldToFile(world.year, world);
+      exportWorldToFile(world.year, world, world.worldly);
       setFeedback({ text: "World exported.", error: false });
     } catch {
       setFeedback({
