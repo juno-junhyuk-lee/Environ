@@ -56,6 +56,7 @@ export {
 export {
   DEFAULT_TIME_STEP_INTERVAL_MS,
   createTimeSimulation,
+  stepWorld,
   type CreateTimeSimulationOptions,
   type TimeSimulation,
   type TimeSimulationState,

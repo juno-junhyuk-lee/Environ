@@ -208,11 +208,26 @@ function evaluateTile(
  * Two-phase, pure step: read every next value from the start-of-step board,
  * then build a new board. Processing order does not affect the result.
  * Pass `ctx` to apply worldly climate/air modifiers; omit it for plain v2.
+ *
+ * `deltaScale` is a debugging aid: it multiplies each tile's yearly change
+ * after the rules (caps included) have run, so trends play out faster without
+ * touching the formulas. Leave it at 1 for the real simulation.
  */
-export function applyToBoard(board: Board, ctx?: WorldlyContext): Board {
+export function applyToBoard(
+  board: Board,
+  ctx?: WorldlyContext,
+  deltaScale = 1,
+): Board {
   const nextTiles = board.tiles.map((tile) => {
     const neighbors = getNeighbors(board, tile);
-    const nextCondition = evaluateTile(tile, neighbors, ctx);
+    const evaluated = evaluateTile(tile, neighbors, ctx);
+    const nextCondition =
+      deltaScale === 1
+        ? evaluated
+        : clampCondition(
+            tile.conditionValue +
+              deltaScale * (evaluated - tile.conditionValue),
+          );
     const updated: Tile = { ...tile, conditionValue: nextCondition };
     return convertTile(updated);
   });
