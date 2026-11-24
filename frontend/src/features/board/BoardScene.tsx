@@ -2,6 +2,7 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { type Group, Raycaster, Vector2 } from "three";
 import { useBoard } from "./boardContext.ts";
+import { useConversions } from "./conversions.ts";
 import { SEA_RADIUS } from "./camera.ts";
 import {
   type TileHitTest,
@@ -39,9 +40,10 @@ function Sea() {
 }
 
 export function BoardScene() {
-  const { tiles } = useBoard();
+  const { tiles, year } = useBoard();
   const { registerTileHitTest } = useElementDragActions();
   const dropTarget = useDropTarget();
+  const converting = useConversions(tiles, year);
   const getSceneState = useThree((state) => state.get);
   const tileGroup = useRef<Group>(null);
 
@@ -87,6 +89,7 @@ export function BoardScene() {
             key={tile.id}
             tile={tile}
             isDropTarget={tile.id === dropTarget}
+            isConverting={converting.has(tile.id)}
           />
         ))}
       </group>

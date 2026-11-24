@@ -1,6 +1,6 @@
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { exportWorldToFile, importWorldFromFile } from "../../world/index.ts";
-import { useBoard, useBoardActions } from "./boardContext.ts";
+import { useBoard, useBoardActions, useSimulation } from "./boardContext.ts";
 
 const ICON_DIR = `${import.meta.env.BASE_URL}icons/`;
 
@@ -41,9 +41,14 @@ function IconButton({ label, icon, disabled, onClick }: IconButtonProps) {
   );
 }
 
-/** Reset, save and load the world: a row of icons tucked into the header. */
+/**
+ * Reset, save and load the world: a row of icons tucked into the header.
+ * Reset and load replace the whole world, so they wait for a pause; saving
+ * a snapshot works at any time.
+ */
 export function WorldControls() {
   const world = useBoard();
+  const { isRunning } = useSimulation();
   const { resetWorld, loadWorld } = useBoardActions();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,11 +84,16 @@ export function WorldControls() {
     setFeedback(null);
     try {
       const result = await importWorldFromFile(file);
-      if (result.ok) {
-        loadWorld(result.save);
+      if (!result.ok) {
+        setFeedback({ text: result.error, error: true });
+      } else if (loadWorld(result.save)) {
         setFeedback({ text: "World loaded.", error: false });
       } else {
-        setFeedback({ text: result.error, error: true });
+        // Play was pressed while the file was being read.
+        setFeedback({
+          text: "Pause the simulation, then load the world again.",
+          error: true,
+        });
       }
     } catch {
       setFeedback({
@@ -112,7 +122,7 @@ export function WorldControls() {
         <IconButton
           label="Reset world"
           icon="reset.png"
-          disabled={isLoading}
+          disabled={isLoading || isRunning}
           onClick={() => {
             resetWorld();
             setFeedback(null);
@@ -127,7 +137,7 @@ export function WorldControls() {
         <IconButton
           label={isLoading ? "Loading…" : "Upload world"}
           icon="load.png"
-          disabled={isLoading}
+          disabled={isLoading || isRunning}
           onClick={() => {
             inputRef.current?.click();
           }}
@@ -139,7 +149,7 @@ export function WorldControls() {
         accept=".json,application/json"
         aria-label="World save file"
         hidden
-        disabled={isLoading}
+        disabled={isLoading || isRunning}
         onChange={(event) => {
           void handleLoad(event);
         }}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createBoardState,
   createDefaultWorld,
+  createTimeSimulation,
   DEFAULT_WORLDLY_STATE,
   ELEMENTS,
   getDefaultCondition,
@@ -58,6 +59,50 @@ describe("worldReducer climate", () => {
       },
     });
     expect(next.worldly).toEqual(DEFAULT_WORLDLY_STATE);
+  });
+});
+
+describe("worldReducer advanceYear", () => {
+  it("advances exactly as the time simulation's step does", () => {
+    const world = createDefaultWorld();
+    const roll = 0.42;
+    const simulation = createTimeSimulation({
+      board: world,
+      worldly: world.worldly,
+      rng: () => roll,
+      setIntervalFn: () => 0,
+      clearIntervalFn: () => undefined,
+    });
+    simulation.start();
+    simulation.advanceStep();
+
+    const next = worldReducer(world, { type: "advanceYear", roll });
+
+    expect(next.year).toBe(1);
+    expect(next.tiles).toEqual(simulation.getBoard().tiles);
+    expect(next.worldly).toEqual(simulation.getWorldly());
+  });
+
+  it("is pure: same roll, same result, and the old world is untouched", () => {
+    const world = createDefaultWorld();
+    const snapshot = structuredClone(world);
+
+    const first = worldReducer(world, { type: "advanceYear", roll: 0.9 });
+    const second = worldReducer(world, { type: "advanceYear", roll: 0.9 });
+
+    expect(first).toEqual(second);
+    expect(world).toEqual(snapshot);
+  });
+
+  it("draws the weather from the roll", () => {
+    // Base weights at 15 °C: sunny 0–35, rainy 35–60, …, storm 90–100.
+    const world = createDefaultWorld();
+    expect(
+      worldReducer(world, { type: "advanceYear", roll: 0 }).worldly.weather,
+    ).toBe("sunny");
+    expect(
+      worldReducer(world, { type: "advanceYear", roll: 0.95 }).worldly.weather,
+    ).toBe("storm");
   });
 });
 

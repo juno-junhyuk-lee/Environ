@@ -1,6 +1,59 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
+import { useBoardActions, useSimulation } from "./boardContext.ts";
+import { prefersReducedMotion } from "./motion.ts";
+import { yearTimerPose } from "./yearTimer.ts";
 import "./playback.css";
+
+/**
+ * A thin vertical bar beside the buttons, shown while playing. Each year it
+ * fills from the bottom, slow then faster, and pops (bulges and springs back)
+ * just as the year turns.
+ *
+ * Drawn every frame from the clock's own record of when the year started
+ * (not a CSS animation with its own timing), so a late frame or re-render
+ * can't put it out of step. Written straight to the elements: no React
+ * render per frame. Decorative: the year is announced by YearIndicator.
+ */
+function YearTimer() {
+  const { isRunning, yearProgress } = useSimulation();
+  const bar = useRef<HTMLSpanElement>(null);
+  const fill = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const barNode = bar.current;
+    const fillNode = fill.current;
+    if (!isRunning || !barNode || !fillNode) return;
+    const reducedMotion = prefersReducedMotion();
+    let frame = 0;
+
+    function draw() {
+      if (!barNode || !fillNode) return;
+      const pose = yearTimerPose(yearProgress(), reducedMotion);
+      fillNode.style.scale = `1 ${String(pose.fill)}`;
+      barNode.style.scale = `${String(pose.scaleX)} ${String(pose.scaleY)}`;
+      frame = requestAnimationFrame(draw);
+    }
+
+    draw();
+    return () => {
+      cancelAnimationFrame(frame);
+      barNode.style.scale = "";
+      fillNode.style.scale = "";
+    };
+  }, [isRunning, yearProgress]);
+
+  return (
+    <div
+      className={isRunning ? "year-timer is-running" : "year-timer"}
+      aria-hidden="true"
+    >
+      <span ref={bar} className="year-timer-bar">
+        <span ref={fill} className="year-timer-fill" />
+      </span>
+    </div>
+  );
+}
 
 // Icons: Friconix fi-hnluxl-play and fi-hnluxl-pause (free with a link back,
 // see the credit in App.tsx), split into the hexagon frame and the symbol so
@@ -31,13 +84,12 @@ function HexIcon({ symbol }: { symbol: string }) {
 
 /**
  * Large play and pause buttons on the right of the board. The one matching
- * the current state is greyed out.
- *
- * UI only for now: nothing runs yet. This state is what will start and pause
- * the time simulation (world/time.ts) once it's wired up.
+ * the current state is greyed out. Play starts the yearly clock (or resumes
+ * it); pause stops it.
  */
 export function PlaybackControls() {
-  const [playing, setPlaying] = useState(false);
+  const { isRunning: playing } = useSimulation();
+  const actions = useBoardActions();
   const playButton = useRef<HTMLButtonElement>(null);
   const pauseButton = useRef<HTMLButtonElement>(null);
 
@@ -45,20 +97,21 @@ export function PlaybackControls() {
   // move focus to the other one. It must be enabled first: hence flushSync.
   function play() {
     flushSync(() => {
-      setPlaying(true);
+      actions.play();
     });
     pauseButton.current?.focus();
   }
 
   function pause() {
     flushSync(() => {
-      setPlaying(false);
+      actions.pause();
     });
     playButton.current?.focus();
   }
 
   return (
     <aside className="playback" aria-label="Playback">
+      <YearTimer />
       <button
         ref={playButton}
         type="button"
