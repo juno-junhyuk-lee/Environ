@@ -1,0 +1,200 @@
+/* The metrics dashboard: one comic panel in the header, framed like the
+   speech bubbles (.speech-bubble in index.css), metrics side by side. The
+   header (index.css) places it. Clickable: lifts on hover, like the comic
+   buttons. */
+.metrics {
+  --ink: #111;
+
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.5rem 1.1rem 0.55rem;
+  color: var(--ink);
+  font-family: var(--font-comic);
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 1.1rem;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition:
+    translate 100ms ease-out,
+    box-shadow 100ms ease-out;
+}
+
+.metrics:has(.metrics-open:hover) {
+  translate: -1px -1px;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.metrics:has(.metrics-open:active) {
+  translate: 2px 2px;
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+/* Invisible, over the whole panel: a click anywhere opens the explanation. */
+.metrics-open {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: inherit;
+  cursor: pointer;
+}
+
+.metrics-open:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 4px;
+}
+
+/* A small "?" badge on the corner, so it's clear there's more to see. */
+.metrics-hint {
+  position: absolute;
+  top: -0.7rem;
+  right: -0.7rem;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--ink);
+  font-family: var(--font-comic);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+}
+
+/* The explanation: one entry per metric, one under another, each split off
+   by a thin ink rule. */
+.metrics-meanings {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.metric-meaning {
+  padding: 0.85rem 0;
+  border-top: 2px solid var(--ink);
+}
+
+.metric-meaning:first-child {
+  padding-top: 0.25rem;
+  border-top: 0;
+}
+
+.metric-meaning:last-child {
+  padding-bottom: 0;
+}
+
+/* The metric's name on the left, its value on the right. */
+.metric-meaning h3 {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  text-align: left;
+}
+
+.metric-meaning-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Labels in a fixed left column, so every line of text starts at the same
+   place. */
+.metric-meaning-lines {
+  display: grid;
+  /* Wide enough for "Why it matters" on one line. */
+  grid-template-columns: 8.25rem minmax(0, 1fr);
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+  text-align: left;
+}
+
+.metric-meaning-lines dt {
+  font-weight: 700;
+}
+
+.metric-meaning-lines dd {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* Narrow screens: each label above its text. */
+@media (width < 34rem) {
+  .metric-meaning-lines {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.1rem;
+  }
+
+  .metric-meaning-lines dd + dt {
+    margin-top: 0.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metrics {
+    transition: none;
+  }
+}
+
+/* Always tall enough for label, value and change line, so the header (and
+   the board below it) never jumps when the first year's changes appear.
+   Until then there are no change lines, so the metrics sit in the middle;
+   after, they line up from the top. The three line heights are set
+   explicitly below so they add up to exactly this. */
+.metrics-list {
+  --metric-label-height: 1rem;
+  --metric-value-height: 1.62rem;
+  --metric-change-height: 1rem;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.4rem;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(
+    var(--metric-label-height) + var(--metric-value-height) +
+      var(--metric-change-height)
+  );
+  margin: 0;
+}
+
+.metrics-list.has-changes {
+  align-items: flex-start;
+}
+
+.metric {
+  display: grid;
+  justify-items: center;
+  min-width: 4.5rem;
+}
+
+.metric-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: var(--metric-label-height);
+  white-space: nowrap;
+}
+
+.metric-value {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: var(--metric-value-height);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.metric-change {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: var(--metric-change-height);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

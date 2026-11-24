@@ -1,0 +1,25 @@
+/* Scoped under .modal to outrank modal.css's `.modal p { margin: 0 }`. */
+.modal .intro-lead {
+  margin-bottom: 1.6rem;
+  font-size: 1.05rem;
+}
+
+/* Two newspaper-style columns where there's room, one on narrow screens.
+   Columns (not a grid) so each rule sits right under the one before it,
+   whatever the length of the rule beside it. */
+.intro-rules {
+  columns: 2 16rem;
+  column-gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intro-rule {
+  margin-bottom: 0.9rem;
+  break-inside: avoid;
+}
+
+.intro-rule:last-child {
+  margin-bottom: 0;
+}

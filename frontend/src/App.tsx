@@ -5,17 +5,19 @@ import { PlaybackControls } from "./features/board/PlaybackControls.tsx";
 import { YearIndicator } from "./features/board/YearIndicator.tsx";
 import { WorldControls } from "./features/board/WorldControls.tsx";
 import { ElementsPane } from "./features/elements/ElementsPane.tsx";
+import { TileInspector } from "./features/inspector/TileInspector.tsx";
+import { IntroCard } from "./features/intro/IntroCard.tsx";
+import { MetricsDashboard } from "./features/metrics/MetricsDashboard.tsx";
+import { DEBUG_SPEED } from "./debug.ts";
 
 function App() {
   return (
-    <BoardProvider>
+    <BoardProvider debugSpeed={DEBUG_SPEED}>
       <ElementDragProvider>
         <div className="app">
           <header className="app-header">
-            <div>
-              <h1>Environ</h1>
-              <p>Build a world. See how your choices shape its future.</p>
-            </div>
+            <h1 className="app-brand">Environ</h1>
+            <MetricsDashboard />
             <WorldControls />
           </header>
           <main className="app-main">
@@ -25,6 +27,7 @@ function App() {
             <div className="board-area">
               <Board3D />
               <YearIndicator />
+              <TileInspector />
             </div>
             <PlaybackControls />
           </main>
@@ -39,6 +42,7 @@ function App() {
               Friconix
             </a>
           </p>
+          <IntroCard />
         </div>
       </ElementDragProvider>
     </BoardProvider>
