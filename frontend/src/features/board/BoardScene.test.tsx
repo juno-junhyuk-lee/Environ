@@ -12,6 +12,7 @@ import { axialToWorld } from "./geometry.ts";
 import { type BoardActions, useBoardActions } from "./boardContext.ts";
 import { BoardProvider } from "./BoardProvider.tsx";
 import { BoardScene } from "./BoardScene.tsx";
+import { Tile3D } from "./Tile3D.tsx";
 import { useElementDragActions } from "./elementDrag.ts";
 import { ElementDragProvider } from "./ElementDragProvider.tsx";
 import { boardReducer } from "./boardState.ts";
@@ -91,6 +92,42 @@ describe("BoardScene", () => {
     expect(objects.size).toBe(19);
   });
 
+  it("gives every tile its own materials, so each can fade on its own", async () => {
+    const renderer = await renderBoard();
+    const materials = renderer.scene
+      .findAllByProps({ name: "tile-model" })
+      .map((model) => (model.instance.children[0] as Mesh).material);
+
+    expect(new Set(materials).size).toBe(19);
+  });
+
+  it("greys a tile out as its condition falls", async () => {
+    const start = createDefaultWorld();
+    const conditions: Record<string, number> = {
+      "0,0": 0,
+      "1,0": 15,
+      "-1,0": 100,
+    };
+    const board = createBoardState(
+      start.tiles.map((tile) => ({
+        ...tile,
+        conditionValue: conditions[tile.id] ?? tile.conditionValue,
+      })),
+    );
+    const renderer = await renderBoard(board);
+    await renderer.advanceFrames(1, 1 / 60);
+    const saturation = (tileId: string) =>
+      (
+        tilePart(renderer, tileId, "tile-model").userData.saturation as {
+          value: number;
+        }
+      ).value;
+
+    expect(saturation("0,0")).toBe(0);
+    expect(saturation("1,0")).toBeCloseTo(15 / 60);
+    expect(saturation("-1,0")).toBe(1);
+  });
+
   it("draws a border on every tile", async () => {
     const renderer = await renderBoard();
     const outlines = renderer.scene.findAllByProps({ name: "tile-outline" });
@@ -160,6 +197,33 @@ describe("BoardScene", () => {
     });
     expect(modelUrl(renderer, "0,0")).toBe(ELEMENT_MODELS.forest.url);
     expect(modelUrl(renderer, "1,-1")).toBe(ELEMENT_MODELS.forest.url);
+  });
+
+  it("hops a converting tile: up and spinning, then back to rest", async () => {
+    const tile = createDefaultWorld().tiles[0];
+    if (tile === undefined) throw new Error("expected a tile");
+    const renderer = await ReactThreeTestRenderer.create(
+      <Tile3D tile={tile} />,
+    );
+    const hop = () =>
+      renderer.scene.findByProps({ name: "tile-hop" }).instance as {
+        position: { y: number };
+        rotation: { y: number };
+      };
+
+    await renderer.update(<Tile3D tile={tile} isConverting />);
+    await ReactThreeTestRenderer.act(async () => {
+      await renderer.advanceFrames(9, 1 / 30); // 0.3 s in: near the top
+    });
+    expect(hop().position.y).toBeGreaterThan(0.3);
+    expect(hop().rotation.y).toBeGreaterThan(0);
+
+    await renderer.update(<Tile3D tile={tile} />);
+    await ReactThreeTestRenderer.act(async () => {
+      await renderer.advanceFrames(30, 1 / 30); // past the end of the hop
+    });
+    expect(hop().position.y).toBe(0);
+    expect(hop().rotation.y).toBe(0);
   });
 
   it("pops the drop target up from its neighbours, then settles it back", async () => {

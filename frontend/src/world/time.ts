@@ -13,6 +13,27 @@ import {
 /** 1 simulation step = 1 year, every 10 seconds. */
 export const DEFAULT_TIME_STEP_INTERVAL_MS = 10000;
 
+/**
+ * One year, pure: draw weather → update carbon → update temperature →
+ * `applyToBoard`. The board and climate passed in are never mutated. The
+ * caller owns the year counter. `deltaScale` (debugging only) speeds up tile
+ * changes; see `applyToBoard`.
+ */
+export function stepWorld(
+  board: Board,
+  worldly: WorldlyState,
+  rng: () => number,
+  deltaScale = 1,
+): { board: Board; worldly: WorldlyState } {
+  const weather = drawWeather(rng, worldly.temperatureC);
+  const carbon = nextCarbon(worldly.carbon, board);
+  const temperatureC = nextTemperature(worldly.temperatureC, carbon);
+  return {
+    board: applyToBoard(board, { temperatureC, weather }, deltaScale),
+    worldly: { temperatureC, carbon, weather },
+  };
+}
+
 export interface TimeSimulationState {
   currentYear: number;
   timeStepInterval: number;
@@ -115,17 +136,12 @@ export function createTimeSimulation(
       return;
     }
 
-    const weather = drawWeather(rng, state.temperatureC);
-    const carbon = nextCarbon(state.carbon, board);
-    const temperatureC = nextTemperature(state.temperatureC, carbon);
-    const ctx = { temperatureC, weather };
-    board = applyToBoard(board, ctx);
+    const next = stepWorld(board, worldlyFromState(), rng);
+    board = next.board;
     state = {
       ...state,
       currentYear: state.currentYear + 1,
-      temperatureC,
-      carbon,
-      weather,
+      ...next.worldly,
     };
     options.onStep?.(board, state.currentYear, worldlyFromState());
   }

@@ -81,7 +81,7 @@ export function TilePreview({
         <directionalLight position={[3, 5, 2]} intensity={1.2} />
         <Suspense fallback={null}>
           <Lift lifted={lifted}>
-            <Tile3D tile={previewTile} />
+            <Tile3D tile={previewTile} showCondition={false} />
           </Lift>
         </Suspense>
       </Canvas>

@@ -157,20 +157,50 @@ body {
   }
 }
 
+/* Three columns with equal outer ones, so the middle is the page's true
+   centre: the logo on the left, the metrics dashboard centred, and the world
+   controls on the right. */
 .app-header {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 1.5rem 1.5rem 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: center;
+  padding: 1.25rem 1.5rem 0;
 }
 
+.app-brand {
+  grid-row: 1;
+  grid-column: 1;
+  justify-self: start;
+}
+
+.app-header .metrics {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.app-header .world-controls {
+  grid-row: 1;
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* Too narrow for one row: the dashboard drops below, still centred. */
+@media (width < 72rem) {
+  .app-header .metrics {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+}
+
+/* The logo, in the comic lettering of the speech bubbles. */
 .app-header h1 {
   margin: 0;
-}
-
-.app-header p {
-  margin: 0.25rem 0 0;
+  font-family: var(--font-comic);
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
 }
 
 .app-main {

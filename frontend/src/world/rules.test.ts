@@ -282,3 +282,46 @@ describe("applyToBoard and time", () => {
     });
   });
 });
+
+describe("applyToBoard deltaScale (debugging aid)", () => {
+  it("leaves the real simulation unchanged at 1", () => {
+    const board = createDefaultWorld();
+    expect(applyToBoard(board, NEUTRAL_CONTEXT, 1)).toEqual(
+      applyToBoard(board, NEUTRAL_CONTEXT),
+    );
+  });
+
+  it("multiplies each tile's yearly change, clamped to 0–100", () => {
+    const board = createDefaultWorld();
+    const normal = applyToBoard(board, NEUTRAL_CONTEXT);
+    const fast = applyToBoard(board, NEUTRAL_CONTEXT, 3);
+    board.tiles.forEach((start, i) => {
+      const change =
+        (normal.tiles[i]?.conditionValue ?? Number.NaN) - start.conditionValue;
+      const expected = Math.min(
+        100,
+        Math.max(0, start.conditionValue + 3 * change),
+      );
+      expect(fast.tiles[i]?.conditionValue).toBeCloseTo(expected, 1);
+    });
+  });
+
+  it("still converts a tile that the faster decline drives to 0", () => {
+    // A lone settlement with no forest or water shrinks every year.
+    const board = createBoardState(
+      createBoardState().tiles.map((t) =>
+        t.id === "0,0"
+          ? { ...t, element: "human_settlement" as const, conditionValue: 10 }
+          : { ...t, element: "fresh_water_body" as const, conditionValue: 50 },
+      ),
+    );
+    const center = (b: Board) => b.tiles.find((t) => t.id === "0,0");
+
+    expect(center(applyToBoard(board, NEUTRAL_CONTEXT))?.element).toBe(
+      "human_settlement",
+    );
+    const fast = center(applyToBoard(board, NEUTRAL_CONTEXT, 10));
+    expect(fast?.element).toBe("forest");
+    expect(fast?.conditionValue).toBe(30);
+  });
+});

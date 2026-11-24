@@ -10,6 +10,7 @@ import {
   replaceTile,
   sanitizeWorldly,
   setNewElement,
+  stepWorld,
 } from "../../world/index.ts";
 
 export interface BoardAction {
@@ -22,6 +23,16 @@ export type WorldAction =
   | BoardAction
   | { type: "resetWorld" }
   | { type: "loadWorld"; save: WorldSave }
+  /**
+   * One simulated year. `roll` is a random number in [0, 1) for the weather
+   * draw, made outside so the reducer stays pure (StrictMode runs it twice).
+   */
+  | {
+      type: "advanceYear";
+      roll: number;
+      /** Debugging only: speeds up tile changes (see `applyToBoard`). */
+      deltaScale?: number;
+    }
   | {
       type: "setWorldly";
       worldly: {
@@ -46,6 +57,16 @@ export function worldReducer(world: World, action: WorldAction): World {
   }
   if (action.type === "setWorldly") {
     return { ...world, worldly: sanitizeWorldly(action.worldly) };
+  }
+  if (action.type === "advanceYear") {
+    const { roll, deltaScale = 1 } = action;
+    const next = stepWorld(world, world.worldly, () => roll, deltaScale);
+    return {
+      tiles: next.board.tiles,
+      maxTiles: world.maxTiles,
+      year: world.year + 1,
+      worldly: next.worldly,
+    };
   }
 
   const board = boardReducer(world, action);

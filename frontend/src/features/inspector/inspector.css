@@ -1,0 +1,110 @@
+/* The tile inspector: a comic speech bubble, drawn like the header's
+   (.speech-bubble in index.css), that follows the mouse over the board.
+   Fixed to the window and placed by TileInspector (its `translate`), so it
+   can spill past the board's edges. */
+.inspector {
+  --ink: #111;
+  --accent: var(--color-forest);
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  width: 14.5rem;
+  padding: 0.6rem 0.9rem 0.75rem;
+  color: var(--ink);
+  font-family: var(--font-comic);
+  font-size: 0.95rem;
+  line-height: 1.25;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 1.1rem;
+  box-shadow: 3px 3px 0 var(--ink);
+  pointer-events: none;
+  opacity: 0;
+  scale: 0.6;
+  transform-origin: left top;
+}
+
+/* Pops in like the speech bubbles; vanishes at once. */
+.inspector.is-open {
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity 120ms ease-out,
+    scale 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.inspector[data-element="fresh_water_body"] {
+  --accent: var(--color-water);
+}
+
+.inspector[data-element="human_settlement"] {
+  --accent: var(--color-settlement);
+}
+
+.inspector-name {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.inspector-status {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.inspector-stats {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.inspector-stat dt {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  font-weight: 700;
+}
+
+.inspector-stat dd {
+  margin: 0.2rem 0 0;
+}
+
+.inspector-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-change {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+/* A chunky outlined bar, filled in the tile's element colour. */
+.inspector-meter {
+  display: block;
+  height: 0.7rem;
+  overflow: hidden;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+.inspector-meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inspector,
+  .inspector.is-open {
+    scale: 1;
+    transition: none;
+  }
+
+  .inspector-meter-fill {
+    transition: none;
+  }
+}

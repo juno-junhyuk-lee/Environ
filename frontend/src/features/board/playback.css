@@ -68,6 +68,43 @@
   opacity: 0.35;
 }
 
+/* The year timer: a thin bar in the gutter left of the buttons. Positioned
+   absolutely so showing it never moves them. */
+.year-timer {
+  position: absolute;
+  top: 50%;
+  left: 0.5rem;
+  width: 0.375rem;
+  height: 11rem;
+  opacity: 0;
+  translate: 0 -50%;
+  transition: opacity 200ms ease-out;
+}
+
+.year-timer.is-running {
+  opacity: 1;
+}
+
+/* The track; it also carries the pop. Its scale (and the fill's) is set
+   every frame by YearTimer from the clock, so no CSS animation here. */
+.year-timer-bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: rgb(47 79 54 / 15%);
+  border-radius: 999px;
+}
+
+.year-timer-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #2f4f36;
+  border-radius: inherit;
+  transform-origin: bottom;
+  scale: 1 0;
+}
+
 /* Narrow screens: a row above the board. */
 @media (width < 48rem) {
   .playback {
@@ -80,11 +117,21 @@
     width: 4.5rem;
     height: 4.5rem;
   }
+
+  /* In the row, before the buttons. It keeps its space while hidden, so
+     pressing play doesn't shift them. */
+  .year-timer {
+    position: static;
+    align-self: center;
+    height: 4rem;
+    translate: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .playback-button,
-  .playback-icon-inside {
+  .playback-icon-inside,
+  .year-timer {
     transition: none;
   }
 }
