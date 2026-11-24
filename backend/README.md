@@ -85,3 +85,17 @@ It is important to note that these systems are not separate. They are linked by 
 
 This response is due to the input given in the first_call.py file which is `Explain how pollution affects bodies of water and forests` 
 
+## Prompt python file 
+
+To Test:
+   ```bash
+   cd backend 
+   uv sync  
+   uv run --env-file .env python prompt.py 
+   ```
+
+**Not Finalized Prompt python file** This python file will very likely change after merged and linking it to the frontend. 
+
+
+    
+
