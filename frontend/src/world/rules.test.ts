@@ -70,6 +70,36 @@ describe("forest rules", () => {
       ),
     ).toBe(42);
   });
+
+  it("keeps dying forests moving: 0.5 declines to 0.4 under hostile neighbours", () => {
+    expect(
+      centreNext(
+        evaluateForest,
+        tile(0, 0, "forest", 0.5),
+        tile(1, 0, "fresh_water_body", 50),
+        tile(-1, 0, "human_settlement", 70),
+        tile(0, 1, "human_settlement", 70),
+      ),
+    ).toBe(0.4);
+  });
+
+  it("reaches exactly 0.0 within 5 steps from 0.5 under hostile neighbours", () => {
+    const hostile = [
+      tile(1, 0, "fresh_water_body", 50),
+      tile(-1, 0, "human_settlement", 70),
+      tile(0, 1, "human_settlement", 70),
+    ];
+    let forest = tile(0, 0, "forest", 0.5);
+    for (let step = 0; step < 5; step += 1) {
+      const board = boardOf(forest, ...hostile);
+      const next = evaluateForest(forest, getNeighbors(board, forest));
+      forest = { ...forest, conditionValue: next };
+      if (next === 0) {
+        break;
+      }
+    }
+    expect(forest.conditionValue).toBe(0);
+  });
 });
 
 describe("fresh water rules", () => {
@@ -184,6 +214,20 @@ describe("conversions", () => {
     if (!centre) throw new Error("missing tile");
     expect(centre.element).toBe("forest");
     expect(centre.conditionValue).toBe(29.4);
+  });
+
+  it("converts a forest at 0.1 surrounded by hostile neighbours into a settlement at 30", () => {
+    const board = boardOf(
+      tile(0, 0, "forest", 0.1),
+      tile(1, 0, "fresh_water_body", 50),
+      tile(-1, 0, "human_settlement", 70),
+      tile(0, 1, "human_settlement", 70),
+    );
+    const next = applyToBoard(board);
+    const centre = next.tiles.find((candidate) => candidate.id === "0,0");
+    if (!centre) throw new Error("missing tile");
+    expect(centre.element).toBe("human_settlement");
+    expect(centre.conditionValue).toBe(30);
   });
 });
 

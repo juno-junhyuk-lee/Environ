@@ -95,7 +95,12 @@ export function evaluateForest(
     growth *= mods.forest * airQualityFactor("forest", aqi);
   }
   const pressure = rates.pressureRate * C * S;
-  const delta = capDelta(growth - pressure, rates.deltaMin, rates.deltaMax);
+  let delta = capDelta(growth - pressure, rates.deltaMin, rates.deltaMax);
+  // A dying forest must be able to reach exactly 0.0, otherwise the
+  // one-decimal rounding freezes it above 0 and conversion never fires.
+  if (delta < 0 && delta > -0.1) {
+    delta = -0.1;
+  }
   return clampCondition(C + delta);
 }
 
